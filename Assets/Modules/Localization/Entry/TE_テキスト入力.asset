@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0deea6a3611113048b94198cacd9b486, type: 3}
+  m_Name: "TE_\u30C6\u30AD\u30B9\u30C8\u5165\u529B"
+  m_EditorClassIdentifier: 
+  Ja: "\u30C6\u30AD\u30B9\u30C8\u5165\u529B..."
+  En: Text input...
+  refs:
+  - scenePath: Assets/Scenes/MainScene.unity
+    hierarchyPath: Canvas/Panel/InputField (TMP)/Text Area/Placeholder
+    componentType: TMP_Text

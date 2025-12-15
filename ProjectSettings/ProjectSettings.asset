@@ -162,7 +162,8 @@ PlayerSettings:
   resetResolutionOnWindowResize: 0
   androidSupportedAspectRatio: 1
   androidMaxAspectRatio: 2.1
-  applicationIdentifier: {}
+  applicationIdentifier:
+    Standalone: com.DefaultCompany.EyeMoT-Vision2
   buildNumber:
     Standalone: 0
     VisionOS: 0
@@ -650,7 +651,21 @@ PlayerSettings:
   webGLMemoryGeometricGrowthStep: 0.2
   webGLMemoryGeometricGrowthCap: 96
   webGLPowerPreference: 2
-  scriptingDefineSymbols: {}
+  scriptingDefineSymbols:
+    Android: UNITY_VISUAL_SCRIPTING;ES3_TMPRO;ES3_UGUI
+    EmbeddedLinux: UNITY_VISUAL_SCRIPTING;ES3_TMPRO;ES3_UGUI
+    LinuxHeadlessSimulation: UNITY_VISUAL_SCRIPTING;ES3_TMPRO;ES3_UGUI
+    Nintendo Switch: UNITY_VISUAL_SCRIPTING;ES3_TMPRO;ES3_UGUI
+    PS4: UNITY_VISUAL_SCRIPTING;ES3_TMPRO;ES3_UGUI
+    QNX: UNITY_VISUAL_SCRIPTING;ES3_TMPRO;ES3_UGUI
+    Server: UNITY_VISUAL_SCRIPTING;ES3_TMPRO;ES3_UGUI
+    Standalone: UNITY_VISUAL_SCRIPTING;ES3_TMPRO;ES3_UGUI
+    VisionOS: UNITY_VISUAL_SCRIPTING;ES3_TMPRO;ES3_UGUI
+    WebGL: UNITY_VISUAL_SCRIPTING;ES3_TMPRO;ES3_UGUI
+    Windows Store Apps: UNITY_VISUAL_SCRIPTING;ES3_TMPRO;ES3_UGUI
+    XboxOne: UNITY_VISUAL_SCRIPTING;ES3_TMPRO;ES3_UGUI
+    iPhone: UNITY_VISUAL_SCRIPTING;ES3_TMPRO;ES3_UGUI
+    tvOS: UNITY_VISUAL_SCRIPTING;ES3_TMPRO;ES3_UGUI
   additionalCompilerArguments: {}
   platformArchitecture: {}
   scriptingBackend: {}
@@ -757,7 +772,7 @@ PlayerSettings:
   hmiLogStartupTiming: 0
   hmiCpuConfiguration: 
   apiCompatibilityLevel: 6
-  activeInputHandler: 0
+  activeInputHandler: 2
   windowsGamepadBackendHint: 0
   cloudProjectId: 6bad948e-a5eb-4f08-972c-83ced0c4d298
   framebufferDepthMemorylessMode: 0
@@ -769,4 +784,4 @@ PlayerSettings:
   hmiLoadingImage: {fileID: 0}
   platformRequiresReadableAssets: 0
   virtualTexturingSupportEnabled: 0
-  insecureHttpOption: 0
+  insecureHttpOption: 2
