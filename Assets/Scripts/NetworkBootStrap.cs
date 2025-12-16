@@ -5,22 +5,30 @@ using System.Collections.Generic;
 using UnityEngine.InputSystem;
 using System;
 
-public class HostClientController : MonoBehaviour
+public class NetworkBootStrap : MonoBehaviour
 {
+    public static NetworkBootStrap Instance { get; private set; }
+    void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(this.gameObject);
+            return;
+        }
+        Instance = this;
+    }
     [Header("State")]
     [SerializeField, ReadOnly] private NetworkManager.NetworkRole _currentRole = NetworkManager.NetworkRole.None;
 
     [Header("Resources")]
     [SerializeField] private int maxClients = 4;
-    [SerializeField] private int _tcpPort = 8080;
-    [SerializeField] private int _udpPort = 8081;
-    [SerializeField] private int _udpDiscoveryPort = 53000;
     [SerializeField] private ClientMouseController _clientMousePrefab;
     [SerializeField] private GameObject _viewPanel;
     public event Action ConnectedToServer;
     private Dictionary<int, ClientMouseController> _clientMouseControllers = new();
     private TcpServer _tcpServer;
     private UdpServer _udpServer;
+    public int Idx;
 
     private void OnDestroy()
     {
@@ -32,43 +40,41 @@ public class HostClientController : MonoBehaviour
         CleanupCurrentRole();
     }
 
-    public async void StartHost()
+    public async void StartHost(int port)
     {
         Debug.Log("Switch role to Host");
 
         CleanupCurrentRole();
 
         // --- サーバ起動（TCP + UDP） ---
-        _tcpServer = new TcpServer(_tcpPort);
+        _tcpServer = new TcpServer(port);
         _tcpServer.ClientConnected += async id => await OnClientConnected(id);
         _tcpServer.ClientDisconnected += id => OnClientDisconnected(id);
         _tcpServer.MessageReceived += (id, msg) => OnMessageReceived(id, msg);
         _tcpServer.Error += ex => Debug.LogError("[TCP Server] " + ex);
         _tcpServer.StartServer();
 
-        _udpServer = new UdpServer(_udpPort, _udpDiscoveryPort);
+        _udpServer = new UdpServer(port + 1, ResourcesManager.Instance.ServerData.DictionaryPort_UDP);
         _udpServer.ClientRegistered += id => Debug.Log($"[UDP Server] Client {id} registered");
         _udpServer.MessageReceived += (id, msg) => OnMessageReceived(id, msg);
         _udpServer.Error += ex => Debug.LogError("[UDP Server] " + ex);
         _udpServer.StartServer();
 
-        Debug.Log($"Servers started: TCP:{_tcpPort}, UDP:{_udpPort}");
-
-        // 自分もクライアントとして localhost に接続
-        //await StartClientsAsync("127.0.0.1");
+        Debug.Log($"Servers started: TCP:{port}, UDP:{port + 1}");
 
         _currentRole = NetworkManager.NetworkRole.Host;
+        // 自分もクライアントとして localhost に接続
+        await StartClientsAsync("127.0.0.1", port);
     }
 
-    public async void StartClient()
+    public async void StartClient(string ipAdress, int port)
     {
+        ResourcesManager.Instance.Loading.SetActive(true);
         Debug.Log("Switch role to Client");
 
         CleanupCurrentRole();
 
-        var hostIp = "127.0.0.1";
-
-        await StartClientsAsync(hostIp);
+        await StartClientsAsync(ipAdress, port);
 
         _currentRole = NetworkManager.NetworkRole.Client;
         ConnectedToServer?.Invoke();
@@ -81,10 +87,10 @@ public class HostClientController : MonoBehaviour
         _currentRole = NetworkManager.NetworkRole.None;
     }
 
-    private async Task StartClientsAsync(string hostIp)
+    private async Task StartClientsAsync(string hostIp, int port)
     {
-        var reliable = new TcpNetworkClient(hostIp, _tcpPort);
-        var unreliable = new UdpNetworkClient(hostIp, _udpPort);
+        var reliable = new TcpNetworkClient(hostIp, port);
+        var unreliable = new UdpNetworkClient(hostIp, port + 1);
 
         var nm = NetworkManager.Instance;
         nm.InitializeReliable(reliable);
@@ -136,6 +142,11 @@ public class HostClientController : MonoBehaviour
         _udpServer = null;
     }
 
+    public void ExitGame()
+    {
+        Application.Quit();
+    }
+
     #region Server EventsHandlers
     private async Task OnClientConnected(int id)
     {
@@ -145,54 +156,58 @@ public class HostClientController : MonoBehaviour
             Type = NetMessageType.RegisteredClient,
             SenderId = 1, // サーバID
             TargetId = id,
-            Payload = new ChatPayload { Text = "割り当ててやったぜ！" }
+            Payload = new ChatPayload { Text = $"サーバーはあなたを{ id }に割り当てたよ！よかったね。" }
+        };
+
+        var mouseCreateMsg = new NetMessage<ChatPayload>
+        {
+            Type = NetMessageType.MouseCreate,
+            SenderId = 1, // サーバーID
+            TargetId = 1,
+            Payload = new ChatPayload { Text = $"{id}" }
         };
 
         string json = NetJson.ToJson(msg);
-
-        if(!_clientMouseControllers.ContainsKey(id))
-        {
-            Debug.Log($"Creating mouse controller for client {id}");
-            var go = Instantiate(_clientMousePrefab);
-            go.name = $"ClientMouse_{id}";
-            go.transform.SetParent(_viewPanel.transform, false);
-            var controller = go.GetComponent<ClientMouseController>();
-            _clientMouseControllers.Add(id, controller);
-        }
-
+        string mouseJson = NetJson.ToJson(mouseCreateMsg);
         await _tcpServer.Send(json);
+        await _tcpServer.Send(mouseJson);
     }
 
-    private void OnClientDisconnected(int id)
+    private async Task OnClientDisconnected(int id)
     {
         Debug.Log($"[TCP Server] Client {id} disconnected");
-        if(_clientMouseControllers.TryGetValue(id, out var controller))
+        var msg = new NetMessage<ChatPayload>
         {
-            Destroy(controller.gameObject);
-            _clientMouseControllers.Remove(id);
-        }
+            Type = NetMessageType.DisconnectedClient,
+            SenderId = 1, // サーバID
+            TargetId = 1,
+            Payload = new ChatPayload { Text = $"{id}" }
+        };
+        string json = NetJson.ToJson(msg);
+        await _tcpServer.Send(json);
     }
 
     private void OnMessageReceived(int id, string msg)
     {
-        var header = NetJson.FromJson<NetMessage<object>>(msg);
-        switch (header.Type)
-        {
-            case NetMessageType.RegisteredClient:
-                var netMsg = NetJson.FromJson<NetMessage<ChatPayload>>(msg);
-                Debug.Log($"[Client Reliable]  Your ID is {netMsg.TargetId} {netMsg.Payload.Text}");
-                break;
-            case NetMessageType.MousePosition:
-                var mousePos = NetJson.FromJson<NetMessage<MousePositionPayload>>(msg);
-                if(_clientMouseControllers.TryGetValue(mousePos.SenderId, out var controller))
-                {
-                    controller.SetPosition(new Vector2(mousePos.Payload.X, mousePos.Payload.Y));
-                }
-                break;
-            default:
-                Debug.Log("[Client Reliable] (Unknown Role) " + msg);
-                break;
-        }
+        //var header = NetJson.FromJson<NetMessage<object>>(msg);
+        //Debug.Log($"[Server] Message received from Client {id}: Type={header.Type}");
+        // switch (header.Type)
+        // {
+        //     case NetMessageType.RegisteredClient:
+        //         var netMsg = NetJson.FromJson<NetMessage<ChatPayload>>(msg);
+        //         Debug.Log($"[Client Reliable] {netMsg.Payload.Text}");
+        //         break;
+        //     // case NetMessageType.MousePosition:
+        //     //     var mousePos = NetJson.FromJson<NetMessage<MousePositionPayload>>(msg);
+        //     //     if(_clientMouseControllers.TryGetValue(mousePos.SenderId, out var controller))
+        //     //     {
+        //     //         controller.SetPosition(new Vector2(mousePos.Payload.X, mousePos.Payload.Y));
+        //     //     }
+        //     //     break;
+        //     default:
+        //         Debug.Log("[Client Reliable] (Unknown Role) " + msg);
+        //         break;
+        // }
     }
 
     #endregion
@@ -200,6 +215,7 @@ public class HostClientController : MonoBehaviour
 
     private void OnReliableConnected()
     {
+        ResourcesManager.Instance.Loading.SetActive(false);
         Debug.Log($"[Client Reliable] Connected as {_currentRole}");
     }
 
@@ -216,6 +232,30 @@ public class HostClientController : MonoBehaviour
             case NetMessageType.RegisteredClient:
                 var netMsg = NetJson.FromJson<NetMessage<ChatPayload>>(msg);
                 Debug.Log($"[Client Reliable]  Your ID is {netMsg.TargetId} {netMsg.Payload.Text}");
+                Idx = netMsg.TargetId;
+                break;
+            case NetMessageType.MouseCreate:
+                var mouseCreateMsg = NetJson.FromJson<NetMessage<ChatPayload>>(msg);
+                var id = int.Parse(mouseCreateMsg.Payload.Text);
+                if(!_clientMouseControllers.ContainsKey(id))
+                {
+                    Debug.Log($"[Client Reliable {_currentRole}] Creating mouse controller for client {id}");
+                    var go = Instantiate(_clientMousePrefab);
+                    go.name = $"ClientMouse_{id}";
+                    go.transform.SetParent(_viewPanel.transform);
+                    var controller = go.GetComponent<ClientMouseController>();
+                    _clientMouseControllers.Add(id, controller);
+                }
+                break;
+            case NetMessageType.DisconnectedClient:
+                var disconnectMsg = NetJson.FromJson<NetMessage<ChatPayload>>(msg);
+                var disId = int.Parse(disconnectMsg.Payload.Text);
+                if(_clientMouseControllers.TryGetValue(disId, out var controllerToRemove))
+                {
+                    Debug.Log($"[Client Reliable {_currentRole}] Removing mouse controller for client {disId}");
+                    Destroy(controllerToRemove.gameObject);
+                    _clientMouseControllers.Remove(disId);
+                }   
                 break;
             default:
                 Debug.Log("[Client Reliable] (Unknown Role) " + msg);
@@ -243,7 +283,20 @@ public class HostClientController : MonoBehaviour
 
     private void OnUnreliableMessageReceived(string msg)
     {
-        Debug.Log("[Client Unreliable] " + msg);
+        var header = NetJson.FromJson<NetMessage<object>>(msg);
+        switch (header.Type)
+        {
+            case NetMessageType.MousePosition:
+                var mousePos = NetJson.FromJson<NetMessage<MousePositionPayload>>(msg);
+                if(_clientMouseControllers.TryGetValue(mousePos.SenderId, out var controller))
+                {
+                    controller.SetPosition(new Vector2(mousePos.Payload.X, mousePos.Payload.Y));
+                }
+                break;
+            default:
+                Debug.Log("[Client Unreliable] (Unknown Role) " + msg);
+                break;
+        }
     }
 
     private void OnUnreliableError(System.Exception ex)

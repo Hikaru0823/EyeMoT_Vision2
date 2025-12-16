@@ -3,6 +3,8 @@ using System.Threading.Tasks;
 
 public interface INetworkClient
 {
+    string Host { get; }
+    int Port { get; }
     Task ConnectAsync();
     void Disconnect();
     void Send(string message);

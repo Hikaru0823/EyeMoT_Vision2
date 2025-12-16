@@ -1204,6 +1204,7 @@ GameObject:
   - component: {fileID: 95009311811542116}
   - component: {fileID: 114766870026563530}
   - component: {fileID: 1438048416222004601}
+  - component: {fileID: 7845417607598399712}
   m_Layer: 5
   m_Name: Server_TCP Button
   m_TagString: Untagged
@@ -1371,6 +1372,23 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   dwellTime: 1.5
   thisSlider: {fileID: 1394814360417329307}
+--- !u!114 &7845417607598399712
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1972693723862608}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d6335108799aa094293d4673e09308b3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _IPAdressText: {fileID: 114005599605280366}
+  _portText: {fileID: 114623458351051754}
+  _playersText: {fileID: 114103061250467838}
+  _pingText: {fileID: 114386713673935792}
+  _pingGage: {fileID: 678566375271725668}
 --- !u!1 &2868914638979783160
 GameObject:
   m_ObjectHideFlags: 0

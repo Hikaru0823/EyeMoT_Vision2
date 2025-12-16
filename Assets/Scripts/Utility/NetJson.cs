@@ -36,6 +36,8 @@ public class NetMessageType
 {
     public const string DiscoveryRequest = "DiscoveryRequest";
     public const string RegisteredClient = "RegisteredClient";
+    public const string DisconnectedClient = "DisconnectedClient";
+    public const string MouseCreate = "MouseCreate";
     public const string MousePosition = "MousePosition";
     public const string IAmHost = "IAmHost";
 }

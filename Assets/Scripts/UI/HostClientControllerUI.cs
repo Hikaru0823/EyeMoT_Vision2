@@ -6,58 +6,37 @@ using UnityEngine.UI;
 
 public class HostClientControllerUI : MonoBehaviour
 {
-    [SerializeField] HostClientController _hostClientController;
+    [SerializeField] NetworkBootStrap _hostClientController;
     [SerializeField] private MainPanelManager _mainPanelManager;
+    [SerializeField] private ServerSettingUI _serverSettingUI;
 
     [Header("UI Buttons")]
     [SerializeField] private Button _hostButton;
     [SerializeField] private Button _clientButton;
     //[SerializeField] private Button _disconnectButton;
     [SerializeField] private Button _discoverHostsButton;
-    [SerializeField] private TMPro.TMP_Dropdown _hostsDropdown;
 
     private TcpServer _tcpServer;
     private UdpServer _udpServer;
 
     private void Awake()
     {
-        _hostClientController.ConnectedToServer += OnConnectedToServer;
-
-        _hostButton.onClick.AddListener(_hostClientController.StartHost);
+        _hostButton.onClick.AddListener(StartHost);
         _clientButton.onClick.AddListener(StartClient);
         //_disconnectButton.onClick.AddListener(_hostClientController.Disconnect);
-        _discoverHostsButton.onClick.AddListener(StartHostDiscovery);
 
         var nm = NetworkManager.Instance;
-        nm.UnreliableMessageReceived += OnUnreliableMessageReceived;
     }
 
-    private void OnUnreliableMessageReceived(string msg)
-    {
-        Debug.Log("Unreliable client connected");
-    }
-
-    private async void StartHostDiscovery()
-    {
-        _hostsDropdown.ClearOptions();
-        var hosts = await HostDiscovery.DiscoverAsync(53000, 3f);
-        List<string> options = new List<string>();
-        foreach (var host in hosts)
-        {
-            options.Add($"{host.Name} ({host.Address}:{host.TcpPort})");
-        }
-        _hostsDropdown.AddOptions(options);
-    }
 
     private void StartClient()
     {
-        //ResourcesManager.Instance.Loading.SetActive(true);
-        //_hostClientController.StartClient();
-        _mainPanelManager.OpenPanel("Multiplayer");
+
+        //_mainPanelManager.OpenPanel("Multiplayer");
     }
 
-    private void OnConnectedToServer()
+    private void StartHost()
     {
-        ResourcesManager.Instance.Loading.SetActive(false);
+        _serverSettingUI.Init(port => _hostClientController.StartHost(port));
     }
 }

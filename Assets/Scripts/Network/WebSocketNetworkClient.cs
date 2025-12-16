@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using NativeWebSocket;
 
-public class WebSocketNetworkClient : INetworkClient
+public class WebSocketNetworkClient
 {
     private readonly string _url;
     private WebSocket _ws;

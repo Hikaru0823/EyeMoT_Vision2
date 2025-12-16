@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
+using UnityEngine;
 
 public class TcpServer : IServer
 {
@@ -155,6 +156,7 @@ public class TcpServer : IServer
     public async Task Send(string message)
     {
         var header = NetJson.FromJson<NetMessage<object>>(message);
+        Debug.Log($"[TCP Server] Sending message to TargetId={header.TargetId}");
         if(header.TargetId == 0)
         {
             await BroadcastAsync(message);

@@ -9,7 +9,9 @@ using System.Threading.Tasks;
 public class TcpNetworkClient : INetworkClient
 {
     private readonly string _host;
+    public string Host { get { return _host; } }
     private readonly int _port;
+    public int Port { get { return _port; } }
 
     private TcpClient _client;
     private StreamReader _reader;

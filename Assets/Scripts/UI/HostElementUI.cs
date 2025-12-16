@@ -1,3 +1,4 @@
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -10,11 +11,12 @@ public class HostElementUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI   _pingText;
     [SerializeField] private Image           _pingGage;
 
-    public void SetHostInfo(string ipAdress, string port, string players)
+    public void SetHostInfo(HostInfo hostInfo, Action<string, int> action)
     {
-        _IPAdressText.text = ipAdress;
-        _portText.text = port;
-        _playersText.text = players;
+        _IPAdressText.text = hostInfo.Address;
+        _portText.text = hostInfo.TcpPort.ToString();
+        _playersText.text = hostInfo.Players.ToString() + "/2";
+        GetComponent<Button>().onClick.AddListener(() => action(hostInfo.Address, hostInfo.TcpPort));
     }
 
     public void UpdatePing(int ping)

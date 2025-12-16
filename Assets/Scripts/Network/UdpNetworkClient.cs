@@ -8,7 +8,9 @@ using System.Threading.Tasks;
 public class UdpNetworkClient : INetworkClient
 {
     private readonly string _host;
+    public string Host { get { return _host; } }
     private readonly int _port;
+    public int Port { get { return _port; } }
 
     private UdpClient _client;
     private CancellationTokenSource _cts;

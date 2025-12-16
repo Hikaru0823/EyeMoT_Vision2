@@ -23,6 +23,11 @@ public class NetworkManager : MonoBehaviour
 
     void Awake()
     {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(this.gameObject);
+            return;
+        }
         Instance = this;
     }
 
@@ -121,6 +126,11 @@ public class NetworkManager : MonoBehaviour
         _unreliableClient?.Tick();
     }
 
+    public string TCPHost => _reliableClient?.Host ?? "0.0.0.0";
+    public int TCPPort => _reliableClient?.Port ?? 0;
+    public string UDPHost => _unreliableClient?.Host ?? "0.0.0.0";
+    public int UDPPort => _unreliableClient?.Port ?? 0;
+
     private void OnReliableConnected() => ReliableConnected?.Invoke();
     private void OnReliableDisconnected() => ReliableDisconnected?.Invoke();
     private void OnReliableMessageReceived(string msg) => ReliableMessageReceived?.Invoke(msg);
@@ -151,4 +161,5 @@ public class NetworkManager : MonoBehaviour
         public string Address;
         public int TcpPort;
         public int UdpPort;
+        public int Players; 
     }

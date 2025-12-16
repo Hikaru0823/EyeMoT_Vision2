@@ -88,9 +88,10 @@ public class UdpServer : IServer
                         Payload = new HostInfo
                         {
                             Name = Dns.GetHostName(),
-                            Address = ((IPEndPoint)_udp.Client.LocalEndPoint).Address.ToString(),
+                            Address = GetLocalIPAddress(),
                             TcpPort = _port-1, // TCPポートはUDPポートの-1とする慣例
-                            UdpPort = _port
+                            UdpPort = _port,
+                            Players = _clients.Count
                         }
                     };
                     var responseJson = NetJson.ToJson(responseMsg);
@@ -119,8 +120,6 @@ public class UdpServer : IServer
                 MessageReceived?.Invoke(id, msg);
 
                 await Send(msg);
-                // 受け取ったメッセージをそのまま全員にブロードキャストする例
-                //await BroadcastAsync($"[UDP:{id}] {msg}");
             }
         }
         catch (Exception ex)
@@ -128,6 +127,11 @@ public class UdpServer : IServer
             if (!token.IsCancellationRequested)
                 Error?.Invoke(ex);
         }
+    }
+
+    public async Task PingSend(int clientId, string message)
+    {
+        await SendToClientAsync(clientId, message);
     }
 
     public async Task Send(string message)
@@ -167,6 +171,24 @@ public class UdpServer : IServer
             {
                 Error?.Invoke(ex);
             }
+        }
+    
+    }
+
+    private string GetLocalIPAddress()
+    {
+        try
+        {
+            using (Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, 0))
+            {
+                socket.Connect("8.8.8.8", 65530);
+                IPEndPoint endPoint = socket.LocalEndPoint as IPEndPoint;
+                return endPoint.Address.ToString();
+            }
+        }
+        catch
+        {
+            return "127.0.0.1";
         }
     }
 

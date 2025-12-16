@@ -4,7 +4,10 @@ using UnityEngine;
 
 public class ClientMouseController : MonoBehaviour
 {
-    // Start is called before the first frame update
+    void Start()
+    {
+        Debug.Log("ClientMouseController started");
+    }
     public void SetPosition(Vector2 position)
     {
         transform.localPosition = position;
