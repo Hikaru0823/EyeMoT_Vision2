@@ -25,7 +25,7 @@ public class HostClientControllerUI : MonoBehaviour
         _clientButton.onClick.AddListener(StartClient);
         //_disconnectButton.onClick.AddListener(_hostClientController.Disconnect);
 
-        var nm = NetworkManager.Instance;
+        var nm = ClientManager.Instance;
     }
 
 

@@ -4,8 +4,10 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using UnityEngine.InputSystem;
 using System;
+using Michsky.UI.Shift;
+using System.Net;
 
-public class NetworkBootStrap : MonoBehaviour
+public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallbacks
 {
     public static NetworkBootStrap Instance { get; private set; }
     void Awake()
@@ -18,26 +20,28 @@ public class NetworkBootStrap : MonoBehaviour
         Instance = this;
     }
     [Header("State")]
-    [SerializeField, ReadOnly] private NetworkManager.NetworkRole _currentRole = NetworkManager.NetworkRole.None;
+    [SerializeField, ReadOnly] private ClientManager.NetworkRole _currentRole = ClientManager.NetworkRole.None;
+    public ClientManager.NetworkRole CurrentRole => _currentRole;
+    [SerializeField] private MainPanelManager _mainPanelManager;
 
     [Header("Resources")]
+    [SerializeField] private ClientManager _clientManagerPrefab;
+    [SerializeField] private ServerManager _serverManagerPrefab;
     [SerializeField] private int maxClients = 4;
     [SerializeField] private ClientMouseController _clientMousePrefab;
-    [SerializeField] private GameObject _viewPanel;
     public event Action ConnectedToServer;
     private Dictionary<int, ClientMouseController> _clientMouseControllers = new();
-    private TcpServer _tcpServer;
-    private UdpServer _udpServer;
-    public int Idx;
+    private ClientManager _clientManager;
+    private ServerManager _serverManager;
 
     private void OnDestroy()
     {
-        CleanupCurrentRole();
+        Disconnect();
     }
 
     private void OnApplicationQuit()
     {
-        CleanupCurrentRole();
+        Disconnect();
     }
 
     public async void StartHost(int port)
@@ -47,36 +51,38 @@ public class NetworkBootStrap : MonoBehaviour
         CleanupCurrentRole();
 
         // --- サーバ起動（TCP + UDP） ---
-        _tcpServer = new TcpServer(port);
-        _tcpServer.ClientConnected += async id => await OnClientConnected(id);
-        _tcpServer.ClientDisconnected += id => OnClientDisconnected(id);
-        _tcpServer.MessageReceived += (id, msg) => OnMessageReceived(id, msg);
-        _tcpServer.Error += ex => Debug.LogError("[TCP Server] " + ex);
-        _tcpServer.StartServer();
-
-        _udpServer = new UdpServer(port + 1, ResourcesManager.Instance.ServerData.DictionaryPort_UDP);
-        _udpServer.ClientRegistered += id => Debug.Log($"[UDP Server] Client {id} registered");
-        _udpServer.MessageReceived += (id, msg) => OnMessageReceived(id, msg);
-        _udpServer.Error += ex => Debug.LogError("[UDP Server] " + ex);
-        _udpServer.StartServer();
+        if(_serverManager != null)
+        {
+            Destroy(_serverManager.gameObject);
+            _serverManager = null;
+        }
+        
+        _serverManager = Instantiate(_serverManagerPrefab);
+        
+        var _tcpServer = new TcpServer(port);
+        var _usdServer = new UdpServer(port + 1, ResourcesManager.Instance.ServerData.DictionaryPort_UDP);
+        _serverManager.AddListener((IServerCallbacks)this);
+        _serverManager.InitializeTcp(_tcpServer);
+        _serverManager.InitializeUdp(_usdServer);
+        _serverManager.StartTcp();
+        _serverManager.StartUdp();
 
         Debug.Log($"Servers started: TCP:{port}, UDP:{port + 1}");
 
-        _currentRole = NetworkManager.NetworkRole.Host;
+        _currentRole = ClientManager.NetworkRole.Host;
         // 自分もクライアントとして localhost に接続
         await StartClientsAsync("127.0.0.1", port);
     }
 
     public async void StartClient(string ipAdress, int port)
     {
-        ResourcesManager.Instance.Loading.SetActive(true);
         Debug.Log("Switch role to Client");
 
         CleanupCurrentRole();
 
+        _currentRole = ClientManager.NetworkRole.Client;
         await StartClientsAsync(ipAdress, port);
 
-        _currentRole = NetworkManager.NetworkRole.Client;
         ConnectedToServer?.Invoke();
     }
 
@@ -84,31 +90,28 @@ public class NetworkBootStrap : MonoBehaviour
     {
         Debug.Log("Disconnect / stop host");
         CleanupCurrentRole();
-        _currentRole = NetworkManager.NetworkRole.None;
+        _currentRole = ClientManager.NetworkRole.None;
     }
 
     private async Task StartClientsAsync(string hostIp, int port)
     {
-        var reliable = new TcpNetworkClient(hostIp, port);
-        var unreliable = new UdpNetworkClient(hostIp, port + 1);
+        var tcp = new TcpNetworkClient(hostIp, port);
+        var udp = new UdpNetworkClient(hostIp, port + 1);
 
-        var nm = NetworkManager.Instance;
-        nm.InitializeReliable(reliable);
-        nm.InitializeUnreliable(unreliable);
-
-        nm.ReliableConnected += OnReliableConnected;
-        nm.ReliableDisconnected += OnReliableDisconnected;
-        nm.ReliableMessageReceived += OnReliableMessageReceived;
-        nm.ReliableError += OnReliableError;
-
-        nm.UnreliableConnected += OnUnreliableConnected;
-        nm.UnreliableDisconnected += OnUnreliableDisconnected;
-        nm.UnreliableMessageReceived += OnUnreliableMessageReceived;
-        nm.UnreliableError += OnUnreliableError;
+        if(_clientManager != null)
+        {
+            Destroy(_clientManager.gameObject);
+            _clientManager = null;
+        }
+        _clientManager = Instantiate(_clientManagerPrefab);
+        _clientManager.AddCallbacks((IClientCallbacks)this);
+        _clientManager.InitializeTcp(tcp);
+        _clientManager.InitializeUdp(udp);
 
         // とりあえず TCP -> UDP の順で接続
-        await nm.ConnectReliableAsync();
-        await nm.ConnectUnreliableAsync();
+        ResourcesManager.Instance.Loading.SetActive(true);
+        await _clientManager.ConnectTcpAsync();
+        //await _clientManager.ConnectUdpAsync();
     }
 
     private void CleanupCurrentRole()
@@ -119,27 +122,20 @@ public class NetworkBootStrap : MonoBehaviour
         }
         _clientMouseControllers.Clear();
 
-        var nm = NetworkManager.Instance;
-        if (nm != null)
+        if (_clientManager != null)
         {
-            nm.ReliableConnected -= OnReliableConnected;
-            nm.ReliableDisconnected -= OnReliableDisconnected;
-            nm.ReliableMessageReceived -= OnReliableMessageReceived;
-            nm.ReliableError -= OnReliableError;
-
-            nm.UnreliableConnected -= OnUnreliableConnected;
-            nm.UnreliableDisconnected -= OnUnreliableDisconnected;
-            nm.UnreliableMessageReceived -= OnUnreliableMessageReceived;
-            nm.UnreliableError -= OnUnreliableError;
-
-            nm.DisconnectAll();
+            _clientManager.RemoveCallbacks((IClientCallbacks)this);
+            _clientManager.Disconnect();
+            Destroy(_clientManager.gameObject);
+            _clientManager = null;
         }
-
-        _tcpServer?.Stop();
-        _tcpServer = null;
-
-        _udpServer?.Stop();
-        _udpServer = null;
+        if (_serverManager != null)
+        {
+            _serverManager.RemoveListener((IServerCallbacks)this);
+            _serverManager.Stop();
+            Destroy(_serverManager.gameObject);
+            _serverManager = null;
+        }
     }
 
     public void ExitGame()
@@ -147,115 +143,91 @@ public class NetworkBootStrap : MonoBehaviour
         Application.Quit();
     }
 
-    #region Server EventsHandlers
-    private async Task OnClientConnected(int id)
+    #region ServerCallbacks
+    void IServerCallbacks.OnClientConnected(TcpServer.ClientConnection client)
     {
-        Debug.Log($"[TCP Server] Client {id} connected");
-        var msg = new NetMessage<ChatPayload>
-        {
-            Type = NetMessageType.RegisteredClient,
-            SenderId = 1, // サーバID
-            TargetId = id,
-            Payload = new ChatPayload { Text = $"サーバーはあなたを{ id }に割り当てたよ！よかったね。" }
-        };
+        Debug.Log($"[Server] Client {client.Id} connected");
+        ServerManager.Instance.SendTcp(
+            NetJson.ToJson(new NetMessage<ChatPayload>
+            {
+                Type = NetMessageType.RegisteredClient,
+                SenderId = 1, // サーバID
+                TargetId = client.Id,
+                Payload = new ChatPayload { Text = $"{client.Id}" }
+            })
+        );
 
-        var mouseCreateMsg = new NetMessage<ChatPayload>
+        if(!_clientMouseControllers.ContainsKey(client.Id)&&client.Id!=1)
         {
-            Type = NetMessageType.MouseCreate,
-            SenderId = 1, // サーバーID
-            TargetId = 1,
-            Payload = new ChatPayload { Text = $"{id}" }
-        };
-
-        string json = NetJson.ToJson(msg);
-        string mouseJson = NetJson.ToJson(mouseCreateMsg);
-        await _tcpServer.Send(json);
-        await _tcpServer.Send(mouseJson);
+            var go = Instantiate(_clientMousePrefab);
+            go.name = $"ClientMouse_{client.Id}";
+            var controller = go.GetComponent<ClientMouseController>();
+            _clientMouseControllers.Add(client.Id, controller);
+        }
     }
 
-    private async Task OnClientDisconnected(int id)
+    void IServerCallbacks.OnClientDisconnected(TcpServer.ClientConnection client)
     {
-        Debug.Log($"[TCP Server] Client {id} disconnected");
-        var msg = new NetMessage<ChatPayload>
+        Debug.Log($"[Server] Client {client.Id} disconnected");
+        if(_clientMouseControllers.TryGetValue(client.Id, out var controllerToRemove))
         {
-            Type = NetMessageType.DisconnectedClient,
-            SenderId = 1, // サーバID
-            TargetId = 1,
-            Payload = new ChatPayload { Text = $"{id}" }
-        };
-        string json = NetJson.ToJson(msg);
-        await _tcpServer.Send(json);
+            Destroy(controllerToRemove.gameObject);
+            _clientMouseControllers.Remove(client.Id);
+        }   
+        
     }
 
-    private void OnMessageReceived(int id, string msg)
+    void IServerCallbacks.OnMessageReceived(IPEndPoint ep, string msg)
     {
-        //var header = NetJson.FromJson<NetMessage<object>>(msg);
-        //Debug.Log($"[Server] Message received from Client {id}: Type={header.Type}");
-        // switch (header.Type)
-        // {
-        //     case NetMessageType.RegisteredClient:
-        //         var netMsg = NetJson.FromJson<NetMessage<ChatPayload>>(msg);
-        //         Debug.Log($"[Client Reliable] {netMsg.Payload.Text}");
-        //         break;
-        //     // case NetMessageType.MousePosition:
-        //     //     var mousePos = NetJson.FromJson<NetMessage<MousePositionPayload>>(msg);
-        //     //     if(_clientMouseControllers.TryGetValue(mousePos.SenderId, out var controller))
-        //     //     {
-        //     //         controller.SetPosition(new Vector2(mousePos.Payload.X, mousePos.Payload.Y));
-        //     //     }
-        //     //     break;
-        //     default:
-        //         Debug.Log("[Client Reliable] (Unknown Role) " + msg);
-        //         break;
-        // }
+        //Debug.Log($"[Server] Message received from {ep}: {msg}");
+    }
+
+    void IServerCallbacks.OnTcpError(System.Exception ex)
+    {
+        Debug.LogError("[Server TCP] " + ex);
+    }
+    void IServerCallbacks.OnUdpError(System.Exception ex)
+    {
+        Debug.LogError("[Server UDP] " + ex);
     }
 
     #endregion
-    #region TCP/UDP EventsHandlers
+    #region ClientCallbacks
 
-    private void OnReliableConnected()
+    void IClientCallbacks.OnTcpConnected()
     {
-        ResourcesManager.Instance.Loading.SetActive(false);
-        Debug.Log($"[Client Reliable] Connected as {_currentRole}");
+        Debug.Log($"[Client] Connected as {_currentRole}");
     }
 
-    private void OnReliableDisconnected()
+    void IClientCallbacks.OnTcpDisconnected()
     {
         Debug.Log("[Client Reliable] Disconnected");
     }
 
-    private void OnReliableMessageReceived(string msg)
+    async void IClientCallbacks.OnTcpMessageReceived(string msg)
     {
         var header = NetJson.FromJson<NetMessage<object>>(msg);
         switch (header.Type)
         {
             case NetMessageType.RegisteredClient:
-                var netMsg = NetJson.FromJson<NetMessage<ChatPayload>>(msg);
-                Debug.Log($"[Client Reliable]  Your ID is {netMsg.TargetId} {netMsg.Payload.Text}");
-                Idx = netMsg.TargetId;
-                break;
-            case NetMessageType.MouseCreate:
-                var mouseCreateMsg = NetJson.FromJson<NetMessage<ChatPayload>>(msg);
-                var id = int.Parse(mouseCreateMsg.Payload.Text);
-                if(!_clientMouseControllers.ContainsKey(id))
-                {
-                    Debug.Log($"[Client Reliable {_currentRole}] Creating mouse controller for client {id}");
-                    var go = Instantiate(_clientMousePrefab);
-                    go.name = $"ClientMouse_{id}";
-                    go.transform.SetParent(_viewPanel.transform);
-                    var controller = go.GetComponent<ClientMouseController>();
-                    _clientMouseControllers.Add(id, controller);
-                }
-                break;
-            case NetMessageType.DisconnectedClient:
-                var disconnectMsg = NetJson.FromJson<NetMessage<ChatPayload>>(msg);
-                var disId = int.Parse(disconnectMsg.Payload.Text);
-                if(_clientMouseControllers.TryGetValue(disId, out var controllerToRemove))
-                {
-                    Debug.Log($"[Client Reliable {_currentRole}] Removing mouse controller for client {disId}");
-                    Destroy(controllerToRemove.gameObject);
-                    _clientMouseControllers.Remove(disId);
-                }   
+                //インデックス割り当て完了してからUDP接続開始
+                var regiMsg = NetJson.FromJson<NetMessage<ChatPayload>>(msg);
+                Debug.Log($"[Client]  Your ID is {regiMsg.Payload.Text}");
+                _clientManager.Idx = int.Parse(regiMsg.Payload.Text);
+                await _clientManager.ConnectUdpAsync();
+
+                _clientManager.SendUdp(
+                    NetJson.ToJson(new NetMessage<object>
+                    {
+                        Type = NetMessageType.UdpConnectRequest,
+                        SenderId = _clientManager.Idx,
+                        TargetId = -1, // サーバーへ送信
+                        Payload = null
+                    })
+                );
+
+                ResourcesManager.Instance.Loading.SetActive(false);
+                _mainPanelManager.OpenPanel("View");
                 break;
             default:
                 Debug.Log("[Client Reliable] (Unknown Role) " + msg);
@@ -263,25 +235,26 @@ public class NetworkBootStrap : MonoBehaviour
         }
     }
 
-    private void OnReliableError(System.Exception ex)
+    void IClientCallbacks.OnTcpError(System.Exception ex)
     {
         Debug.LogError("[Client Reliable] " + ex);
+        Disconnect();
     }
 
     // --- Unreliable(UDP) イベント ---
 
-    private void OnUnreliableConnected()
+    void IClientCallbacks.OnUdpConnected()
     {
         Debug.Log("[Client Unreliable] Ready (UDP)");
         // ここで座標同期開始などのフラグを立てるのもアリ
     }
 
-    private void OnUnreliableDisconnected()
+    void IClientCallbacks.OnUdpDisconnected()
     {
         Debug.Log("[Client Unreliable] Disconnected");
     }
 
-    private void OnUnreliableMessageReceived(string msg)
+    void IClientCallbacks.OnUdpReceived(string msg)
     {
         var header = NetJson.FromJson<NetMessage<object>>(msg);
         switch (header.Type)
@@ -299,9 +272,11 @@ public class NetworkBootStrap : MonoBehaviour
         }
     }
 
-    private void OnUnreliableError(System.Exception ex)
+    void IClientCallbacks.OnUdpError(System.Exception ex)
     {
         Debug.LogError("[Client Unreliable] " + ex);
+        Disconnect();
+        _mainPanelManager.OpenPanel("HostClientControll");
     }
     #endregion
 }

@@ -16,7 +16,7 @@ public class UdpNetworkClient : INetworkClient
     private CancellationTokenSource _cts;
     private Task _receiveTask;
 
-    private readonly ConcurrentQueue<string> _receiveQueue = new ConcurrentQueue<string>();
+    //private readonly ConcurrentQueue<string> _receiveQueue = new ConcurrentQueue<string>();
 
     public event Action Connected;
     public event Action Disconnected;
@@ -81,10 +81,10 @@ public class UdpNetworkClient : INetworkClient
 
     public void Tick()
     {
-        while (_receiveQueue.TryDequeue(out var msg))
-        {
-            MessageReceived?.Invoke(msg);
-        }
+        // while (_receiveQueue.TryDequeue(out var msg))
+        // {
+        //     MessageReceived?.Invoke(msg);
+        // }
     }
 
     private async Task ReceiveLoopAsync(CancellationToken token)
@@ -104,7 +104,7 @@ public class UdpNetworkClient : INetworkClient
                 }
 
                 var msg = Encoding.UTF8.GetString(result.Buffer);
-                _receiveQueue.Enqueue(msg);
+                MessageReceived?.Invoke(msg);
             }
         }
         catch (Exception ex)

@@ -35,6 +35,7 @@ public class NetMessage<TPayload>
 public class NetMessageType
 {
     public const string DiscoveryRequest = "DiscoveryRequest";
+    public const string UdpConnectRequest = "UdpConnectRequest";
     public const string RegisteredClient = "RegisteredClient";
     public const string DisconnectedClient = "DisconnectedClient";
     public const string MouseCreate = "MouseCreate";

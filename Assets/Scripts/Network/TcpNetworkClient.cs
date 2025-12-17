@@ -20,8 +20,6 @@ public class TcpNetworkClient : INetworkClient
     private CancellationTokenSource _cts;
     private Task _receiveTask;
 
-    // 受信キュー（別スレッドで積んで、Tickで捌く）
-    private readonly ConcurrentQueue<string> _receiveQueue = new ConcurrentQueue<string>();
 
     public event Action Connected;
     public event Action Disconnected;
@@ -103,10 +101,10 @@ public class TcpNetworkClient : INetworkClient
     public void Tick()
     {
         // 受信キューからメッセージを取り出してイベント発火
-        while (_receiveQueue.TryDequeue(out var msg))
-        {
-            MessageReceived?.Invoke(msg);
-        }
+        // while (_receiveQueue.TryDequeue(out var msg))
+        // {
+        //     MessageReceived?.Invoke(msg);
+        // }
     }
 
     private async Task ReceiveLoopAsync(CancellationToken token)
@@ -123,7 +121,7 @@ public class TcpNetworkClient : INetworkClient
                     break;
                 }
 
-                _receiveQueue.Enqueue(line);
+                MessageReceived?.Invoke(line);
             }
         }
         catch (Exception ex)

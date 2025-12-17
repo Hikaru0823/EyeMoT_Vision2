@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -14,11 +15,9 @@ public class TcpServer : IServer
     private readonly int _port;
     private TcpListener _listener;
     private CancellationTokenSource _cts;
-
-    private readonly Dictionary<int, ClientConnection> _clients = new Dictionary<int, ClientConnection>();
     private int _nextClientId = 1;
 
-    private class ClientConnection
+    public class ClientConnection
     {
         public int Id;
         public TcpClient Client;
@@ -27,9 +26,9 @@ public class TcpServer : IServer
         public Task ReceiveTask;
     }
 
-    public event Action<int> ClientConnected;
-    public event Action<int> ClientDisconnected;
-    public event Action<int, string> MessageReceived;
+    public event Action<ClientConnection> ClientConnected;
+    public event Action<ClientConnection> ClientDisconnected;
+    public event Action<IPEndPoint, string> MessageReceived;
     public event Action<Exception> Error;
 
     public TcpServer(int port)
@@ -53,22 +52,23 @@ public class TcpServer : IServer
     {
         _cts?.Cancel();
 
-        lock (_clients)
-        {
-            foreach (var c in _clients.Values)
-            {
-                try { c.Reader?.Dispose(); } catch { }
-                try { c.Writer?.Dispose(); } catch { }
-                try { c.Client?.Close(); } catch { }
-            }
-            _clients.Clear();
-        }
-
         try { _listener?.Stop(); } catch { }
 
         _listener = null;
         _cts?.Dispose();
         _cts = null;
+    }
+
+    public void Tick()
+    {
+        // while (_clientConnectQueue.TryDequeue(out var conn))
+        // {
+        //     ClientConnected?.Invoke(conn);
+        // }    
+        // while (_clientDisconnectQueue.TryDequeue(out var conn))
+        // {
+        //     ClientDisconnected?.Invoke(conn);
+        // }
     }
 
     private async Task AcceptLoopAsync(CancellationToken token)
@@ -81,24 +81,16 @@ public class TcpServer : IServer
                 var stream = client.GetStream();
                 var reader = new StreamReader(stream, Encoding.UTF8);
                 var writer = new StreamWriter(stream, Encoding.UTF8) { AutoFlush = true };
-
+                var id = _nextClientId++;
                 var conn = new ClientConnection
                 {
-                    Id = _nextClientId++,
+                    Id = id,
                     Client = client,
                     Reader = reader,
                     Writer = writer
                 };
 
-                lock (_clients)
-                {
-                    if(!_clients.TryGetValue(conn.Id, out var _))
-                    {
-                        _clients.Add(conn.Id, conn);
-                    }
-                }
-
-                ClientConnected?.Invoke(conn.Id);
+                ClientConnected?.Invoke(conn);
 
                 conn.ReceiveTask = Task.Run(() => ReceiveLoopAsync(conn, token));
             }
@@ -123,9 +115,8 @@ public class TcpServer : IServer
                 var line = await conn.Reader.ReadLineAsync().ConfigureAwait(false);
                 if (line == null) break;
 
-                MessageReceived?.Invoke(conn.Id, line);
-
-                await Send(line);
+                var ep = conn.Client.Client.RemoteEndPoint as IPEndPoint;
+                MessageReceived?.Invoke(ep, line);
             }
         }
         catch (Exception ex)
@@ -141,52 +132,20 @@ public class TcpServer : IServer
 
     private void DisconnectClient(ClientConnection conn)
     {
-        lock (_clients)
-        {
-            _clients.Remove(conn.Id);
-        }
-
         try { conn.Reader?.Dispose(); } catch { }
         try { conn.Writer?.Dispose(); } catch { }
         try { conn.Client?.Close(); } catch { }
 
-        ClientDisconnected?.Invoke(conn.Id);
+        ClientDisconnected?.Invoke(conn);
     }
 
-    public async Task Send(string message)
+    public async Task BroadcastAsync(List<ClientSession> targetClients, string message)
     {
-        var header = NetJson.FromJson<NetMessage<object>>(message);
-        Debug.Log($"[TCP Server] Sending message to TargetId={header.TargetId}");
-        if(header.TargetId == 0)
-        {
-            await BroadcastAsync(message);
-            return;
-        }
-        else if(header.TargetId == -1)
-        {
-            // サーバへの送信は無視
-            return;
-        }
-        else
-        {
-            await SendToClientAsync(header.TargetId, message);
-            return;
-        }
-    }
-
-    public async Task BroadcastAsync(string message)
-    {
-        List<ClientConnection> snapshot;
-        lock (_clients)
-        {
-            snapshot = new List<ClientConnection>(_clients.Values);
-        }
-
-        foreach (var c in snapshot)
+        foreach (var c in targetClients)
         {
             try
             {
-                await c.Writer.WriteLineAsync(message);
+                await c.Tcp.Writer.WriteLineAsync(message);
             }
             catch (Exception ex)
             {
@@ -195,18 +154,11 @@ public class TcpServer : IServer
         }
     }
 
-    public async Task SendToClientAsync(int clientId, string message)
+    public async Task SendToClientAsync(ClientSession session, string message)
     {
-        ClientConnection conn;
-        lock (_clients)
-        {
-            if (!_clients.TryGetValue(clientId, out conn))
-                return; // もう切断されてるなど
-        }
-
         try
         {
-            await conn.Writer.WriteLineAsync(message);
+            await session.Tcp.Writer.WriteLineAsync(message);
         }
         catch (Exception ex)
         {

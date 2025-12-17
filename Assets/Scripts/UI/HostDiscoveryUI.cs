@@ -41,7 +41,6 @@ public class HostDiscoveryUI : MonoBehaviour
 
     void ClickAction(string ipAddress, int port)
     {
-        _mainPanelManager.OpenPanel("View");
         NetworkBootStrap.Instance.StartClient(ipAddress, port);
     }
 }

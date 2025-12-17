@@ -1,9 +1,13 @@
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 
 public class ViewPanel : MonoBehaviour
 {
+    public Transform mouseContent;
+    [SerializeField] private TextMeshProUGUI roleText;
+    [SerializeField] private TextMeshProUGUI serverInfoText;
     [SerializeField] private RectTransform panelRect;
     [SerializeField] private Camera uiCamera;
     [SerializeField] float sendInterval = 0.02f; // 50fps
@@ -12,7 +16,17 @@ public class ViewPanel : MonoBehaviour
     bool _isSending = false;
     void OnEnable()
     {
-        _isSending = true;
+        if(NetworkBootStrap.Instance.CurrentRole == ClientManager.NetworkRole.Client)
+        {
+            _isSending = true;
+        }
+        else
+        {
+        }
+        roleText.text = $"Role: {NetworkBootStrap.Instance.CurrentRole}";
+        serverInfoText.text = ClientManager.Instance != null ?
+            $"Connected to: {ClientManager.Instance.TCPHost}:{ClientManager.Instance.TCPPort}" :
+            "Not connected";
     }
     void OnDisable()
     {
@@ -22,6 +36,11 @@ public class ViewPanel : MonoBehaviour
     void Update()
     {
         if (!_isSending) return;
+        if(ClientManager.Instance == null)
+        {
+            _isSending = false;
+            return;
+        }
 
         _timer += Time.deltaTime;
 
@@ -45,12 +64,12 @@ public class ViewPanel : MonoBehaviour
         var msg = new NetMessage<MousePositionPayload>
         {
             Type = NetMessageType.MousePosition,
-            SenderId = NetworkBootStrap.Instance.Idx,
+            SenderId = ClientManager.Instance.Idx,
             TargetId = 1,
             Payload = new MousePositionPayload { X = localPoint.x, Y = localPoint.y }
         };
 
         string json = NetJson.ToJson(msg);
-        NetworkManager.Instance.SendUnreliable(json);
+        ClientManager.Instance.SendUdp(json);
     }
 }

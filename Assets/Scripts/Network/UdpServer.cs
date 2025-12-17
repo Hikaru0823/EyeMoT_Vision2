@@ -17,13 +17,7 @@ public class UdpServer : IServer
     private CancellationTokenSource _cts;
     private Task _receiveTask;
     private Task _discoveryTask;
-
-    // 送信元エンドポイント → クライアントID
-    private readonly Dictionary<int, IPEndPoint> _clients = new Dictionary<int, IPEndPoint>();
-    private int _nextClientId = 1;
-
-    public event Action<int> ClientRegistered;
-    public event Action<int, string> MessageReceived;
+    public event Action<IPEndPoint, string> MessageReceived;
     public event Action<Exception> Error;
 
     public UdpServer(int port, int discoveryPort)
@@ -39,8 +33,8 @@ public class UdpServer : IServer
         _udp = new UdpClient(_port);
         _discoveryUdp = new UdpClient(_discoveryPort);
         _cts = new CancellationTokenSource();
-        _receiveTask = Task.Run(() => ReceiveLoopAsync(_cts.Token, _udp));
-        _discoveryTask = Task.Run(() => ReceiveLoopAsync(_cts.Token, _discoveryUdp));
+        _receiveTask = Task.Run(() => ReceiveLoopAsync(_cts.Token));
+        _discoveryTask = Task.Run(() => ReceiveDiscoveryLoopAsync(_cts.Token));
     }
 
     public void Stop()
@@ -55,21 +49,52 @@ public class UdpServer : IServer
         _cts = null;
         _receiveTask = null;
         _discoveryTask = null;
-
-        _clients.Clear();
     }
 
-    private async Task ReceiveLoopAsync(CancellationToken token, UdpClient udp)
+    public void Tick()
+    {
+        // UDPはコネクションレスなので特にやることなし
+    }
+
+    private async Task ReceiveLoopAsync(CancellationToken token)
     {
         try
         {
-            int id = 0;
             while (!token.IsCancellationRequested)
             {
                 UdpReceiveResult result;
                 try
                 {
-                    result = await udp.ReceiveAsync().ConfigureAwait(false);
+                    result = await _udp.ReceiveAsync().ConfigureAwait(false);
+                }
+                catch (ObjectDisposedException)
+                {
+                    break;
+                }
+
+                var ep = result.RemoteEndPoint;
+                var msg = Encoding.UTF8.GetString(result.Buffer);
+
+                MessageReceived?.Invoke(ep, msg);
+            }
+        }
+        catch (Exception ex)
+        {
+            if (!token.IsCancellationRequested)
+                Error?.Invoke(ex);
+        }
+    }
+
+    private async Task ReceiveDiscoveryLoopAsync(CancellationToken token)
+    {
+        try
+        {
+            while (!token.IsCancellationRequested)
+            {
+                UdpReceiveResult result;
+                try
+                {
+                    result = await _discoveryUdp.ReceiveAsync().ConfigureAwait(false);
                 }
                 catch (ObjectDisposedException)
                 {
@@ -91,7 +116,7 @@ public class UdpServer : IServer
                             Address = GetLocalIPAddress(),
                             TcpPort = _port-1, // TCPポートはUDPポートの-1とする慣例
                             UdpPort = _port,
-                            Players = _clients.Count
+                            //Players = _clients.Count
                         }
                     };
                     var responseJson = NetJson.ToJson(responseMsg);
@@ -104,22 +129,7 @@ public class UdpServer : IServer
                     {
                         Error?.Invoke(ex);
                     }
-                    continue;
                 }
-
-                lock (_clients)
-                {
-                    if (!_clients.ContainsValue(ep))
-                    {
-                        id = _nextClientId++;
-                        _clients.Add(id, ep);
-                        ClientRegistered?.Invoke(id);
-                    }
-                }
-
-                MessageReceived?.Invoke(id, msg);
-
-                await Send(msg);
             }
         }
         catch (Exception ex)
@@ -129,43 +139,19 @@ public class UdpServer : IServer
         }
     }
 
-    public async Task PingSend(int clientId, string message)
-    {
-        await SendToClientAsync(clientId, message);
-    }
+    // public async Task PingSend(int clientId, string message)
+    // {
+    //     await SendToClientAsync(clientId, message);
+    // }
 
-    public async Task Send(string message)
+    public async Task BroadcastAsync(List<ClientSession> targetClients, string message)
     {
-        var header = NetJson.FromJson<NetMessage<object>>(message);
-        if(header.TargetId == 0)
-        {
-            await BroadcastAsync(message);
-            return;
-        }
-        else
-        {
-            await SendToClientAsync(header.TargetId, message);
-            return;
-        }
-    }
-
-    public async Task BroadcastAsync(string message)
-    {
-        if (_udp == null) return;
-
         var data = Encoding.UTF8.GetBytes(message);
-
-        List<IPEndPoint> snapshot;
-        lock (_clients)
-        {
-            snapshot = new List<IPEndPoint>(_clients.Values);
-        }
-
-        foreach (var ep in snapshot)
+        foreach (var client in targetClients)
         {
             try
             {
-                await _udp.SendAsync(data, data.Length, ep);
+                await _udp.SendAsync(data, data.Length, client.Udp);
             }
             catch (Exception ex)
             {
@@ -173,6 +159,19 @@ public class UdpServer : IServer
             }
         }
     
+    }
+
+    public async Task SendToClientAsync(ClientSession targetClient, string message)
+    {
+        var data = Encoding.UTF8.GetBytes(message);
+        try
+        {
+            await _udp.SendAsync(data, data.Length, targetClient.Udp);
+        }
+        catch (Exception ex)
+        {
+            Error?.Invoke(ex);
+        }
     }
 
     private string GetLocalIPAddress()
@@ -189,30 +188,6 @@ public class UdpServer : IServer
         catch
         {
             return "127.0.0.1";
-        }
-    }
-
-    public async Task SendToClientAsync(int clientId, string message)
-    {
-        if (_udp == null) return;
-
-        IPEndPoint ep;
-        lock (_clients)
-        {
-            if (!_clients.TryGetValue(clientId, out ep))
-                return; // もう切断されてるなど
-        }
-
-        if (ep == null) return; // クライアントが見つからない
-
-        var data = Encoding.UTF8.GetBytes(message);
-        try
-        {
-            await _udp.SendAsync(data, data.Length, ep);
-        }
-        catch (Exception ex)
-        {
-            Error?.Invoke(ex);
         }
     }
 }
