@@ -29,6 +29,8 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
     [SerializeField] private ServerManager _serverManagerPrefab;
     [SerializeField] private int maxClients = 4;
     [SerializeField] private ClientMouseController _clientMousePrefab;
+    [SerializeField] private RectTransform _viewPanel;
+    [SerializeField] private CanvasScaler _viewCanvas;
     public event Action ConnectedToServer;
     private Dictionary<int, ClientMouseController> _clientMouseControllers = new();
     private ClientManager _clientManager;
@@ -156,14 +158,6 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
                 Payload = new ChatPayload { Text = $"{client.Id}" }
             })
         );
-
-        if(!_clientMouseControllers.ContainsKey(client.Id)&&client.Id!=1)
-        {
-            var go = Instantiate(_clientMousePrefab);
-            go.name = $"ClientMouse_{client.Id}";
-            var controller = go.GetComponent<ClientMouseController>();
-            _clientMouseControllers.Add(client.Id, controller);
-        }
     }
 
     void IServerCallbacks.OnClientDisconnected(TcpServer.ClientConnection client)
@@ -228,6 +222,37 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
 
                 ResourcesManager.Instance.Loading.SetActive(false);
                 _mainPanelManager.OpenPanel("View");
+
+                if(CurrentRole == ClientManager.NetworkRole.Host) return;
+                // ウィンドウサイズを取得
+                var screenSize = $"{Screen.width}x{Screen.height}";
+                _clientManager.SendTcp(
+                    NetJson.ToJson(new NetMessage<ChatPayload>
+                    {
+                        Type = NetMessageType.ScreenSize,
+                        SenderId = _clientManager.Idx,
+                        TargetId = 1, // ホストへ送信
+                        Payload = new ChatPayload { Text = screenSize }
+                    })
+                );
+                break;
+            case NetMessageType.ScreenSize:
+                var rscrMsg = NetJson.FromJson<NetMessage<ChatPayload>>(msg);
+                Debug.Log($"[Client]  Client Screen size is {rscrMsg.Payload.Text}");
+                var screenSizeParts = rscrMsg.Payload.Text.Split('x');
+                _viewCanvas.referenceResolution = new Vector2(
+                    float.Parse(screenSizeParts[0]),
+                    float.Parse(screenSizeParts[1])
+                );
+                _viewPanel.sizeDelta = _viewCanvas.referenceResolution;
+                _viewPanel.localPosition = new Vector2(-float.Parse(screenSizeParts[0])/2, -float.Parse(screenSizeParts[1])/2);
+                if(!_clientMouseControllers.ContainsKey(rscrMsg.SenderId)&&rscrMsg.SenderId!=1)
+                {
+                    var go = Instantiate(_clientMousePrefab);
+                    go.name = $"ClientMouse_{rscrMsg.SenderId}";
+                    var controller = go.GetComponent<ClientMouseController>();
+                    _clientMouseControllers.Add(rscrMsg.SenderId, controller);
+                }
                 break;
             default:
                 Debug.Log("[Client Reliable] (Unknown Role) " + msg);

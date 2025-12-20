@@ -13,4 +13,4 @@ MonoBehaviour:
   m_Name: Server Data
   m_EditorClassIdentifier: 
   PortPresets: 901f0000911f0000f0d20000d8d60000
-  DictionaryPort_UDP: 53000
+  DictionaryPort_UDP: 56000

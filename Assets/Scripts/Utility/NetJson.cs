@@ -41,4 +41,5 @@ public class NetMessageType
     public const string MouseCreate = "MouseCreate";
     public const string MousePosition = "MousePosition";
     public const string IAmHost = "IAmHost";
+    public const string ScreenSize = "ScreenSize";
 }

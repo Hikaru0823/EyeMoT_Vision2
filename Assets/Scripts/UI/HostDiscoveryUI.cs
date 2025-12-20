@@ -24,7 +24,7 @@ public class HostDiscoveryUI : MonoBehaviour
         _hostElements.Clear();
 
         _discoverHostsButton.interactable = false;
-        var hosts = await HostDiscovery.DiscoverAsync(53000, 3f);
+        var hosts = await HostDiscovery.DiscoverAsync(ResourcesManager.Instance.ServerData.DictionaryPort_UDP, 3f);
         foreach (var host in hosts)
         {
             var element = Instantiate(_hostElementPrefab, _hostsListParent);

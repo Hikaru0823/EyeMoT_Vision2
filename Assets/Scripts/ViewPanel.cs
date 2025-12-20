@@ -47,13 +47,13 @@ public class ViewPanel : MonoBehaviour
         if (_timer < sendInterval) return;
         _timer = 0f;
 
-        Vector2 localPoint;
-        RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            panelRect,
-            Input.mousePosition,
-            uiCamera,
-            out localPoint
-        );
+        Vector2 localPoint = Input.mousePosition;
+        // RectTransformUtility.ScreenPointToLocalPointInRectangle(
+        //     panelRect,
+        //     Input.mousePosition,
+        //     uiCamera,
+        //     out localPoint
+        // );
 
         // 一定以上動いてなければ送らない
         if ((localPoint - _lastSent).sqrMagnitude < 1f) // 1px未満
