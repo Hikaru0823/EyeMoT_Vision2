@@ -25,14 +25,17 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
     [SerializeField] private MainPanelManager _mainPanelManager;
 
     [Header("Resources")]
+    [SerializeField] private EffectSpawner _effectSpawner;
     [SerializeField] private ClientManager _clientManagerPrefab;
     [SerializeField] private ServerManager _serverManagerPrefab;
     [SerializeField] private int maxClients = 4;
     [SerializeField] private ClientMouseController _clientMousePrefab;
-    [SerializeField] private RectTransform _viewPanel;
+    [SerializeField] private GameObject _clientViewPanelPrefab;
     [SerializeField] private CanvasScaler _viewCanvas;
+    [SerializeField] private PlayerObject _playerObjectPrefab;
+    PlayerObject _localPlayerObject;
     public event Action ConnectedToServer;
-    private Dictionary<int, ClientMouseController> _clientMouseControllers = new();
+    private Dictionary<int, PlayerObject> _clients = new();
     private ClientManager _clientManager;
     private ServerManager _serverManager;
 
@@ -118,11 +121,11 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
 
     private void CleanupCurrentRole()
     {
-        foreach (var controller in _clientMouseControllers.Values)
+        foreach (var controller in _clients.Values)
         {
             Destroy(controller.gameObject);
         }
-        _clientMouseControllers.Clear();
+        _clients.Clear();
 
         if (_clientManager != null)
         {
@@ -163,10 +166,12 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
     void IServerCallbacks.OnClientDisconnected(TcpServer.ClientConnection client)
     {
         Debug.Log($"[Server] Client {client.Id} disconnected");
-        if(_clientMouseControllers.TryGetValue(client.Id, out var controllerToRemove))
+        if(_clients.TryGetValue(client.Id, out var playerObject))
         {
-            Destroy(controllerToRemove.gameObject);
-            _clientMouseControllers.Remove(client.Id);
+            Destroy(playerObject.MouseController.gameObject);
+            Destroy(playerObject.ViewPanel);
+            Destroy(playerObject.gameObject);
+            _clients.Remove(client.Id);
         }   
         
     }
@@ -235,24 +240,41 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
                         Payload = new ChatPayload { Text = screenSize }
                     })
                 );
+                var vp = Instantiate(_clientViewPanelPrefab, _viewCanvas.transform);
+                _viewCanvas.referenceResolution = new Vector2(Screen.width, Screen.height);
+                vp.GetComponent<RectTransform>().sizeDelta = _viewCanvas.referenceResolution;
+                vp.GetComponent<RectTransform>().localPosition = new Vector2(-Screen.width/2, -Screen.height/2);
+                _localPlayerObject = Instantiate(_playerObjectPrefab);
+                _localPlayerObject.ViewPanel = vp;
+                _localPlayerObject.Id = _clientManager.Idx;
                 break;
             case NetMessageType.ScreenSize:
                 var rscrMsg = NetJson.FromJson<NetMessage<ChatPayload>>(msg);
                 Debug.Log($"[Client]  Client Screen size is {rscrMsg.Payload.Text}");
                 var screenSizeParts = rscrMsg.Payload.Text.Split('x');
-                _viewCanvas.referenceResolution = new Vector2(
+                if(!_clients.ContainsKey(rscrMsg.SenderId)&&rscrMsg.SenderId!=1)
+                {
+                    var vpGo = Instantiate(_clientViewPanelPrefab, _viewCanvas.transform);
+                    _viewCanvas.referenceResolution = new Vector2(
                     float.Parse(screenSizeParts[0]),
                     float.Parse(screenSizeParts[1])
-                );
-                _viewPanel.sizeDelta = _viewCanvas.referenceResolution;
-                _viewPanel.localPosition = new Vector2(-float.Parse(screenSizeParts[0])/2, -float.Parse(screenSizeParts[1])/2);
-                if(!_clientMouseControllers.ContainsKey(rscrMsg.SenderId)&&rscrMsg.SenderId!=1)
-                {
-                    var go = Instantiate(_clientMousePrefab);
+                    );
+                    vpGo.GetComponent<RectTransform>().sizeDelta = _viewCanvas.referenceResolution;
+                    vpGo.GetComponent<RectTransform>().localPosition = new Vector2(-float.Parse(screenSizeParts[0])/2, -float.Parse(screenSizeParts[1])/2);
+                    var go = Instantiate(_clientMousePrefab, vpGo.transform);
                     go.name = $"ClientMouse_{rscrMsg.SenderId}";
                     var controller = go.GetComponent<ClientMouseController>();
-                    _clientMouseControllers.Add(rscrMsg.SenderId, controller);
+                    var plobj = Instantiate(_playerObjectPrefab);
+                    plobj.ViewPanel = vpGo;
+                    plobj.MouseController = controller;
+                    plobj.Id = rscrMsg.SenderId;
+                    _clients.Add(rscrMsg.SenderId, plobj);
                 }
+                break;
+            case NetMessageType.EffectPosition:
+                var effectMsg = NetJson.FromJson<NetMessage<EffectPositionPayload>>(msg);
+                var effectPosition = new Vector3(effectMsg.Payload.X, effectMsg.Payload.Y, effectMsg.Payload.Z);
+                _effectSpawner.SpawnEffect(effectMsg.Payload.EffectType, effectPosition);
                 break;
             default:
                 Debug.Log("[Client Reliable] (Unknown Role) " + msg);
@@ -286,9 +308,9 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
         {
             case NetMessageType.MousePosition:
                 var mousePos = NetJson.FromJson<NetMessage<MousePositionPayload>>(msg);
-                if(_clientMouseControllers.TryGetValue(mousePos.SenderId, out var controller))
+                if(_clients.TryGetValue(mousePos.SenderId, out var plObj))
                 {
-                    controller.SetPosition(new Vector2(mousePos.Payload.X, mousePos.Payload.Y));
+                    plObj.MouseController.SetPosition(new Vector2(mousePos.Payload.X, mousePos.Payload.Y));
                 }
                 break;
             default:

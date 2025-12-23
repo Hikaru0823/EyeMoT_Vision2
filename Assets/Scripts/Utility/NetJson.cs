@@ -24,6 +24,15 @@ public class MousePositionPayload
     public float Y;
 }
 
+public class EffectPositionPayload
+{
+    public int Id;
+    public EffectType EffectType = EffectType.Fire;
+    public float X;
+    public float Y;
+    public float Z;
+}
+
 public class NetMessage<TPayload>
 {
     public string Type;
@@ -40,6 +49,7 @@ public class NetMessageType
     public const string DisconnectedClient = "DisconnectedClient";
     public const string MouseCreate = "MouseCreate";
     public const string MousePosition = "MousePosition";
+    public const string EffectPosition = "EffectPosition";
     public const string IAmHost = "IAmHost";
     public const string ScreenSize = "ScreenSize";
 }

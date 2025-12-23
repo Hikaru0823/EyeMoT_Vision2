@@ -6,7 +6,7 @@ public class ClientMouseController : MonoBehaviour
 {
     void Start()
     {
-        transform.SetParent(InterfaceManager.Instance.viewPanel.mouseContent, false);
+        //transform.SetParent(InterfaceManager.Instance.viewPanel.mouseContent, false);
     }
     public void SetPosition(Vector2 position)
     {

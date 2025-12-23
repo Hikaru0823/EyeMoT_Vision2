@@ -100,15 +100,21 @@ namespace Michsky.UI.Shift
             {
                 StopCoroutine("DisablePreviousPanel");
 
-                currentPanel = panels[currentPanelIndex].panelObject;
+                if(currentPanelIndex != -1)
+                {
+                    currentPanel = panels[currentPanelIndex].panelObject;
+                    currentPanelAnimator = currentPanel.GetComponent<Animator>();
+                    currentPanelAnimator.Play(panelFadeOut);
+                }
+                    
                 currentPanelIndex = newPanelIndex;
                 nextPanel = panels[currentPanelIndex].panelObject;
                 nextPanel.SetActive(true);
 
-                currentPanelAnimator = currentPanel.GetComponent<Animator>();
+                
                 nextPanelAnimator = nextPanel.GetComponent<Animator>();
 
-                currentPanelAnimator.Play(panelFadeOut);
+                
                 nextPanelAnimator.Play(panelFadeIn);
 
                 StartCoroutine("DisablePreviousPanel");
