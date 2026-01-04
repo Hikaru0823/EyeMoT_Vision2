@@ -25,7 +25,6 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
     [SerializeField] private MainPanelManager _mainPanelManager;
 
     [Header("Resources")]
-    [SerializeField] private EffectSpawner _effectSpawner;
     [SerializeField] private ClientManager _clientManagerPrefab;
     [SerializeField] private ServerManager _serverManagerPrefab;
     [SerializeField] private int maxClients = 4;
@@ -33,7 +32,6 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
     [SerializeField] private GameObject _clientViewPanelPrefab;
     [SerializeField] private CanvasScaler _viewCanvas;
     [SerializeField] private PlayerObject _playerObjectPrefab;
-    PlayerObject _localPlayerObject;
     public event Action ConnectedToServer;
     private Dictionary<int, PlayerObject> _clients = new();
     private ClientManager _clientManager;
@@ -121,11 +119,20 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
 
     private void CleanupCurrentRole()
     {
-        foreach (var controller in _clients.Values)
+        foreach (var controller in _clients)
         {
-            Destroy(controller.gameObject);
+            Destroy(controller.Value.MouseController.gameObject);
+            Destroy(controller.Value.ViewPanel);
+            Destroy(controller.Value.gameObject);
         }
         _clients.Clear();
+
+        if(PlayerObject.Local != null)
+        {
+            Destroy(PlayerObject.Local.ViewPanel);
+            Destroy(PlayerObject.Local.gameObject);
+            PlayerObject.Local = null;
+        }
 
         if (_clientManager != null)
         {
@@ -179,6 +186,34 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
     void IServerCallbacks.OnMessageReceived(IPEndPoint ep, string msg)
     {
         //Debug.Log($"[Server] Message received from {ep}: {msg}");
+        var header = NetJson.FromJson<NetMessage<object>>(msg);
+        switch (header.Type)
+        {
+            // クライアントの画面サイズとマウスオブジェクト生成
+            case NetMessageType.ScreenSize:
+                var rscrMsg = NetJson.FromJson<NetMessage<ChatPayload>>(msg);
+                Debug.Log($"[Client]  Client Screen size is {rscrMsg.Payload.Text}");
+                var screenSizeParts = rscrMsg.Payload.Text.Split('x');
+                if(!_clients.ContainsKey(rscrMsg.SenderId)&&rscrMsg.SenderId!=1)
+                {
+                    var vpGo = Instantiate(_clientViewPanelPrefab, _viewCanvas.transform);
+                    _viewCanvas.referenceResolution = new Vector2(
+                    float.Parse(screenSizeParts[0]),
+                    float.Parse(screenSizeParts[1])
+                    );
+                    vpGo.GetComponent<RectTransform>().sizeDelta = _viewCanvas.referenceResolution;
+                    vpGo.GetComponent<RectTransform>().localPosition = new Vector2(-float.Parse(screenSizeParts[0])/2, -float.Parse(screenSizeParts[1])/2);
+                    var go = Instantiate(_clientMousePrefab, vpGo.transform);
+                    go.name = $"ClientMouse_{rscrMsg.SenderId}";
+                    var controller = go.GetComponent<ClientMouseController>();
+                    var plobj = Instantiate(_playerObjectPrefab);
+                    plobj.ViewPanel = vpGo;
+                    plobj.MouseController = controller;
+                    plobj.Id = rscrMsg.SenderId;
+                    _clients.Add(rscrMsg.SenderId, plobj);
+                }
+                break;
+        }
     }
 
     void IServerCallbacks.OnTcpError(System.Exception ex)
@@ -201,6 +236,7 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
     void IClientCallbacks.OnTcpDisconnected()
     {
         Debug.Log("[Client Reliable] Disconnected");
+        Disconnect();
     }
 
     async void IClientCallbacks.OnTcpMessageReceived(string msg)
@@ -228,7 +264,8 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
                 ResourcesManager.Instance.Loading.SetActive(false);
                 _mainPanelManager.OpenPanel("View");
 
-                if(CurrentRole == ClientManager.NetworkRole.Host) return;
+                //if(CurrentRole == ClientManager.NetworkRole.Host) return;
+                
                 // ウィンドウサイズを取得
                 var screenSize = $"{Screen.width}x{Screen.height}";
                 _clientManager.SendTcp(
@@ -240,41 +277,20 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
                         Payload = new ChatPayload { Text = screenSize }
                     })
                 );
+                // ローカルプレイヤーオブジェクト生成
                 var vp = Instantiate(_clientViewPanelPrefab, _viewCanvas.transform);
                 _viewCanvas.referenceResolution = new Vector2(Screen.width, Screen.height);
                 vp.GetComponent<RectTransform>().sizeDelta = _viewCanvas.referenceResolution;
                 vp.GetComponent<RectTransform>().localPosition = new Vector2(-Screen.width/2, -Screen.height/2);
-                _localPlayerObject = Instantiate(_playerObjectPrefab);
-                _localPlayerObject.ViewPanel = vp;
-                _localPlayerObject.Id = _clientManager.Idx;
-                break;
-            case NetMessageType.ScreenSize:
-                var rscrMsg = NetJson.FromJson<NetMessage<ChatPayload>>(msg);
-                Debug.Log($"[Client]  Client Screen size is {rscrMsg.Payload.Text}");
-                var screenSizeParts = rscrMsg.Payload.Text.Split('x');
-                if(!_clients.ContainsKey(rscrMsg.SenderId)&&rscrMsg.SenderId!=1)
-                {
-                    var vpGo = Instantiate(_clientViewPanelPrefab, _viewCanvas.transform);
-                    _viewCanvas.referenceResolution = new Vector2(
-                    float.Parse(screenSizeParts[0]),
-                    float.Parse(screenSizeParts[1])
-                    );
-                    vpGo.GetComponent<RectTransform>().sizeDelta = _viewCanvas.referenceResolution;
-                    vpGo.GetComponent<RectTransform>().localPosition = new Vector2(-float.Parse(screenSizeParts[0])/2, -float.Parse(screenSizeParts[1])/2);
-                    var go = Instantiate(_clientMousePrefab, vpGo.transform);
-                    go.name = $"ClientMouse_{rscrMsg.SenderId}";
-                    var controller = go.GetComponent<ClientMouseController>();
-                    var plobj = Instantiate(_playerObjectPrefab);
-                    plobj.ViewPanel = vpGo;
-                    plobj.MouseController = controller;
-                    plobj.Id = rscrMsg.SenderId;
-                    _clients.Add(rscrMsg.SenderId, plobj);
-                }
+                var localPlayerObject = Instantiate(_playerObjectPrefab);
+                PlayerObject.Local = localPlayerObject;
+                PlayerObject.Local.Id = _clientManager.Idx;
+                PlayerObject.Local.ViewPanel = vp;
                 break;
             case NetMessageType.EffectPosition:
                 var effectMsg = NetJson.FromJson<NetMessage<EffectPositionPayload>>(msg);
                 var effectPosition = new Vector3(effectMsg.Payload.X, effectMsg.Payload.Y, effectMsg.Payload.Z);
-                _effectSpawner.SpawnEffect(effectMsg.Payload.EffectType, effectPosition);
+                InterfaceManager.Instance.ViewPanelController.CreateEffectAt(effectMsg.Payload.EffectType, effectPosition, PlayerObject.Local.ViewPanel.GetComponent<RectTransform>());
                 break;
             default:
                 Debug.Log("[Client Reliable] (Unknown Role) " + msg);

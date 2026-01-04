@@ -6,37 +6,24 @@ using UnityEngine.UI;
 
 public class HostClientControllerUI : MonoBehaviour
 {
-    [SerializeField] NetworkBootStrap _hostClientController;
-    [SerializeField] private MainPanelManager _mainPanelManager;
-    [SerializeField] private ServerSettingUI _serverSettingUI;
-
     [Header("UI Buttons")]
     [SerializeField] private Button _hostButton;
     [SerializeField] private Button _clientButton;
-    //[SerializeField] private Button _disconnectButton;
-    [SerializeField] private Button _discoverHostsButton;
-
-    private TcpServer _tcpServer;
-    private UdpServer _udpServer;
 
     private void Awake()
     {
         _hostButton.onClick.AddListener(StartHost);
         _clientButton.onClick.AddListener(StartClient);
-        //_disconnectButton.onClick.AddListener(_hostClientController.Disconnect);
-
-        var nm = ClientManager.Instance;
     }
 
 
     private void StartClient()
     {
-
-        //_mainPanelManager.OpenPanel("Multiplayer");
+        InterfaceManager.Instance.HostDiscoveryUI.DiscoveryHosts();
     }
 
     private void StartHost()
     {
-        _serverSettingUI.Init(port => _hostClientController.StartHost(port));
+        InterfaceManager.Instance.ServerSettingUI.Init(port => NetworkBootStrap.Instance.StartHost(port));
     }
 }

@@ -2,6 +2,18 @@ using Newtonsoft.Json;
 
 public static class NetJson
 {
+    public static string ToJson<TPayload>(TPayload obj, string type, int targetId = -1, int senderId = -1)
+    {
+        var msg = new NetMessage<TPayload>
+        {
+            Type = type,
+            SenderId = senderId,
+            TargetId = targetId,
+            Payload = obj
+        };
+        return ToJson(msg);
+    }
+
     public static string ToJson(object obj)
     {
         return JsonConvert.SerializeObject(obj);
@@ -26,8 +38,7 @@ public class MousePositionPayload
 
 public class EffectPositionPayload
 {
-    public int Id;
-    public EffectType EffectType = EffectType.Fire;
+    public VFXDef.TYPE EffectType = VFXDef.TYPE.FIRE_00;
     public float X;
     public float Y;
     public float Z;

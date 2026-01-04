@@ -60,6 +60,8 @@ namespace Michsky.UI.Shift
 
         void Awake()
         {
+            if(currentPanelIndex <0) return;
+
             if(panels[currentPanelIndex].buttonObject != null)
             {
                 currentButton = panels[currentPanelIndex].buttonObject;
@@ -100,7 +102,7 @@ namespace Michsky.UI.Shift
             {
                 StopCoroutine("DisablePreviousPanel");
 
-                if(currentPanelIndex != -1)
+                if(currentPanelIndex != -1 && panels[currentPanelIndex].panelObject != null)
                 {
                     currentPanel = panels[currentPanelIndex].panelObject;
                     currentPanelAnimator = currentPanel.GetComponent<Animator>();
@@ -110,27 +112,42 @@ namespace Michsky.UI.Shift
                 currentPanelIndex = newPanelIndex;
                 nextPanel = panels[currentPanelIndex].panelObject;
                 nextPanel.SetActive(true);
-
-                
                 nextPanelAnimator = nextPanel.GetComponent<Animator>();
-
-                
                 nextPanelAnimator.Play(panelFadeIn);
 
                 StartCoroutine("DisablePreviousPanel");
 
-                if(panels[currentButtonIndex].buttonObject != null && panels[newPanelIndex].buttonObject != null)
+                if(panels[currentButtonIndex].buttonObject != null)
                 {
                     currentButton = panels[currentButtonIndex].buttonObject;
-                    currentButtonIndex = newPanelIndex;
-                    nextButton = panels[currentButtonIndex].buttonObject;
-
                     currentButtonAnimator = currentButton.GetComponent<Animator>();
-                    nextButtonAnimator = nextButton.GetComponent<Animator>();
-
                     currentButtonAnimator.Play(buttonFadeOut);
+                }
+
+                currentButtonIndex = newPanelIndex;
+
+                if(panels[newPanelIndex].buttonObject != null)
+                {
+                    nextButton = panels[currentButtonIndex].buttonObject;
+                    nextButtonAnimator = nextButton.GetComponent<Animator>();
                     nextButtonAnimator.Play(buttonFadeIn);
                 }
+            }
+            else
+            {
+                if(currentPanelIndex != -1 && panels[currentPanelIndex].panelObject != null)
+                {
+                    currentPanel = panels[currentPanelIndex].panelObject;
+                    currentPanelAnimator = currentPanel.GetComponent<Animator>();
+                    currentPanelAnimator.Play(panelFadeOut);
+                }
+                if(panels[currentButtonIndex].buttonObject != null)
+                {
+                    currentButton = panels[currentButtonIndex].buttonObject;
+                    currentButtonAnimator = currentButton.GetComponent<Animator>();
+                    currentButtonAnimator.Play(buttonFadeOut);
+                }
+                currentPanelIndex = -1;
             }
         }
 
