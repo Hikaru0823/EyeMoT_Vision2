@@ -10,6 +10,7 @@ namespace Michsky.UI.Shift
         public List<PanelItem> panels = new List<PanelItem>();
 
         [Header("Settings")]
+        [SerializeField] private bool isMain = false;
         [SerializeField] private bool useCulling = true;
         public int currentPanelIndex = 0;
         private int currentButtonIndex = 0;
@@ -135,6 +136,7 @@ namespace Michsky.UI.Shift
             }
             else
             {
+                if(isMain == true) return;
                 if(currentPanelIndex != -1 && panels[currentPanelIndex].panelObject != null)
                 {
                     currentPanel = panels[currentPanelIndex].panelObject;
@@ -220,5 +222,7 @@ namespace Michsky.UI.Shift
                 panels[i].panelObject.gameObject.SetActive(false);
             }
         }
+
+        public string GetCurrentPanel() => panels[currentPanelIndex].panelName;
     }
 }

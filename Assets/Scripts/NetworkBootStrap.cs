@@ -22,7 +22,6 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
     [Header("State")]
     [SerializeField, ReadOnly] private ClientManager.NetworkRole _currentRole = ClientManager.NetworkRole.None;
     public ClientManager.NetworkRole CurrentRole => _currentRole;
-    [SerializeField] private MainPanelManager _mainPanelManager;
 
     [Header("Resources")]
     [SerializeField] private ClientManager _clientManagerPrefab;
@@ -155,6 +154,11 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
         Application.Quit();
     }
 
+    public void ReturnButton()
+    {
+        Disconnect();
+    } 
+
     #region ServerCallbacks
     void IServerCallbacks.OnClientConnected(TcpServer.ClientConnection client)
     {
@@ -262,12 +266,12 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
                 );
 
                 ResourcesManager.Instance.Loading.SetActive(false);
-                _mainPanelManager.OpenPanel("View");
+                InterfaceManager.Instance.MainPanelManager.OpenPanel("View");
 
                 //if(CurrentRole == ClientManager.NetworkRole.Host) return;
                 
                 // ウィンドウサイズを取得
-                var screenSize = $"{Screen.width}x{Screen.height}";
+                var screenSize = $"{Display.main.systemWidth}x{Display.main.systemHeight}";
                 _clientManager.SendTcp(
                     NetJson.ToJson(new NetMessage<ChatPayload>
                     {
@@ -279,9 +283,9 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
                 );
                 // ローカルプレイヤーオブジェクト生成
                 var vp = Instantiate(_clientViewPanelPrefab, _viewCanvas.transform);
-                _viewCanvas.referenceResolution = new Vector2(Screen.width, Screen.height);
+                _viewCanvas.referenceResolution = new Vector2(Display.main.systemWidth, Display.main.systemHeight);
                 vp.GetComponent<RectTransform>().sizeDelta = _viewCanvas.referenceResolution;
-                vp.GetComponent<RectTransform>().localPosition = new Vector2(-Screen.width/2, -Screen.height/2);
+                vp.GetComponent<RectTransform>().localPosition = new Vector2(-Display.main.systemWidth/2, -Display.main.systemHeight/2);
                 var localPlayerObject = Instantiate(_playerObjectPrefab);
                 PlayerObject.Local = localPlayerObject;
                 PlayerObject.Local.Id = _clientManager.Idx;
@@ -290,7 +294,11 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
             case NetMessageType.EffectPosition:
                 var effectMsg = NetJson.FromJson<NetMessage<EffectPositionPayload>>(msg);
                 var effectPosition = new Vector3(effectMsg.Payload.X, effectMsg.Payload.Y, effectMsg.Payload.Z);
-                InterfaceManager.Instance.ViewPanelController.CreateEffectAt(effectMsg.Payload.EffectType, effectPosition, PlayerObject.Local.ViewPanel.GetComponent<RectTransform>());
+                if(ResourcesManager.Instance.VFXHolder.TryGet((VFXDef.TYPE)effectMsg.Payload.VFXTypeIndex, out var vfxData))
+                {
+                    Debug.Log($"Create effect {(VFXDef.TYPE)effectMsg.Payload.VFXTypeIndex} at {effectPosition} for client {effectMsg.SenderId}");
+                    InterfaceManager.Instance.ViewPanelController.CreateEffectAt(vfxData.Resource, effectPosition, effectMsg.Payload.CanPlaySE, effectMsg.Payload.CanPlayLowSE, PlayerObject.Local.ViewPanel.GetComponent<RectTransform>());
+                }
                 break;
             default:
                 Debug.Log("[Client Reliable] (Unknown Role) " + msg);
@@ -339,7 +347,7 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
     {
         Debug.LogError("[Client Unreliable] " + ex);
         Disconnect();
-        _mainPanelManager.OpenPanel("HostClientControll");
+        InterfaceManager.Instance.MainPanelManager.OpenPanel("HostClientControll");
     }
     #endregion
 }

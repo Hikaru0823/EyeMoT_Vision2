@@ -1,3 +1,4 @@
+using KanKikuchi.AudioManager;
 using UnityEngine;
 
 public class VFXController : MonoBehaviour
@@ -12,13 +13,23 @@ public class VFXController : MonoBehaviour
 
     }
 
-    public void init(float aliveTimer = -1)
+    public void init(VFXResource data, bool canPlaySE, bool canPlayLowSE, float aliveTimer = -1)
     {
         _ParticleSystem = GetComponent<ParticleSystem>();
         if (_ParticleSystem == null)
         {
-            Debug.LogError($"ParticleSystem�I�u�W�F�N�g��������Ȃ��̂͂��������I {this.gameObject.name}");
+            Debug.LogError($"ParticleSystem not found on {this.gameObject.name}");
         }
+
+        if (canPlaySE)
+        {
+            SEManager.Instance.Play(data.CurrentSEPath);
+        }
+        if (canPlayLowSE)
+        {
+            SEManager.Instance.Play(SEPath.LOW50_HZ);
+        }
+
         _AliveTimer = aliveTimer;
         if (0 < aliveTimer)
         {

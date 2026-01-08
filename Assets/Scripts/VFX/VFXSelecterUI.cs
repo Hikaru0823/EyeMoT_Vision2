@@ -7,7 +7,7 @@ using UnityEngine.UI;
 public class VFXSelecterUI : SimpleHighlightSelecterOptionUI
 {
     [SerializeField] private VFXOption[] vfxOptions;
-    public VFXDef.TYPE CurrentVFXType{get; private set;}
+    public VFXData CurrentVFXData {get; private set;}
 
     void Start()
     {
@@ -17,7 +17,11 @@ public class VFXSelecterUI : SimpleHighlightSelecterOptionUI
     public override void OnOptionSelected(OptionButtonResources option)
     {
         base.OnOptionSelected(option);
-        CurrentVFXType = (option as VFXOption).TYPE;
+        if(ResourcesManager.Instance.VFXHolder.TryGet((option as VFXOption).TYPE, out var data))
+        {
+            Debug.Log($"VFX Selected: {(option as VFXOption).TYPE}, SEPath: {data.Resource.CurrentSEPath}");
+            CurrentVFXData = data;
+        }
     }
     
     #if UNITY_EDITOR

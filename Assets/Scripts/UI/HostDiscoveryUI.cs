@@ -6,7 +6,6 @@ using UnityEngine.UI;
 
 public class HostDiscoveryUI : MonoBehaviour
 {
-    [SerializeField] private MainPanelManager _mainPanelManager;
     [SerializeField] private Button _discoverHostsButton;
     [SerializeField] private Transform _hostsListParent;
     [SerializeField] private HostElementUI _hostElementPrefab;

@@ -4,7 +4,6 @@ using UnityEngine;
 public class ResourcesManager : MonoBehaviour
 {
     public static ResourcesManager Instance { get; private set; }
-
     [SerializeField] private GameObject _loading;
     [SerializeField] private ServerData _serverData;
     [SerializeField] private VFXHolder _vfxHolder;

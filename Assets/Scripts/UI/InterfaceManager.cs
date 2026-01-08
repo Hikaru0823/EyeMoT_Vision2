@@ -17,12 +17,14 @@ public class InterfaceManager : MonoBehaviour
         Instance = this;
     }
 
+    [SerializeField] private MainPanelManager _mainPanelManager;
+    public MainPanelManager MainPanelManager => _mainPanelManager;
     [SerializeField] private ViewPanelController _viewPanelController;
-    [SerializeField] private ServerSettingUI _serverSettingUI;
-    [SerializeField] private HostDiscoveryUI _hostDiscoveryUI;
-    [SerializeField] private VFXSelecterUI _vfxSelecterUI;
     public ViewPanelController ViewPanelController => _viewPanelController;
+    [SerializeField] private ServerSettingUI _serverSettingUI;
     public ServerSettingUI ServerSettingUI => _serverSettingUI;
+    [SerializeField] private HostDiscoveryUI _hostDiscoveryUI;
     public HostDiscoveryUI HostDiscoveryUI => _hostDiscoveryUI;
+    [SerializeField] private VFXSelecterUI _vfxSelecterUI;
     public VFXSelecterUI VFXSelecterUI => _vfxSelecterUI;
 }

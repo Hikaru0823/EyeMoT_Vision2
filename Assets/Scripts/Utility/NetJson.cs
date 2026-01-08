@@ -38,7 +38,9 @@ public class MousePositionPayload
 
 public class EffectPositionPayload
 {
-    public VFXDef.TYPE EffectType = VFXDef.TYPE.FIRE_00;
+    public int VFXTypeIndex;
+    public bool CanPlaySE;
+    public bool CanPlayLowSE;
     public float X;
     public float Y;
     public float Z;
@@ -61,6 +63,7 @@ public class NetMessageType
     public const string MouseCreate = "MouseCreate";
     public const string MousePosition = "MousePosition";
     public const string EffectPosition = "EffectPosition";
+    public const string ImagePosition = "ImagePosition";
     public const string IAmHost = "IAmHost";
     public const string ScreenSize = "ScreenSize";
 }
