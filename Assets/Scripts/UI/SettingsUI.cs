@@ -2,11 +2,11 @@ using UnityEngine;
 
 public class SettingsUI : MonoBehaviour
 {
-    [SerializeField] private VFXPreview _vfxPreview;
+    [SerializeField] private Preview _vfxPreview;
 
     void OnDisable()
     {
-        _vfxPreview.Stop();
+        _vfxPreview.StopVFX();
     }
 
 }

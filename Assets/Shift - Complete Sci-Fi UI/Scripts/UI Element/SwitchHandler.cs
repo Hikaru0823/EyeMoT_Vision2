@@ -19,14 +19,14 @@ namespace Michsky.UI.Shift
         {
             switchSource.isOn = true;
             switchSource.switchAnimator.Play("Switch On");
-            switchSource.OnEvents.Invoke();
+            switchSource.ToggleEvents.Invoke(true);
         }
 
         public void SetOff()
         {
             switchSource.isOn = false;
             switchSource.switchAnimator.Play("Switch Off");
-            switchSource.OffEvents.Invoke();
+            switchSource.ToggleEvents.Invoke(false);
         }
     }
 }

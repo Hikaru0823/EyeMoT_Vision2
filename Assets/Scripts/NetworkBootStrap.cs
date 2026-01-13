@@ -294,10 +294,10 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
             case NetMessageType.EffectPosition:
                 var effectMsg = NetJson.FromJson<NetMessage<EffectPositionPayload>>(msg);
                 var effectPosition = new Vector3(effectMsg.Payload.X, effectMsg.Payload.Y, effectMsg.Payload.Z);
-                if(ResourcesManager.Instance.VFXHolder.TryGet((VFXDef.TYPE)effectMsg.Payload.VFXTypeIndex, out var vfxData))
+                if(VFXManager.Instance.TryGet((VFXDef.TYPE)effectMsg.Payload.VFXTypeIndex, out var vfxData))
                 {
                     Debug.Log($"Create effect {(VFXDef.TYPE)effectMsg.Payload.VFXTypeIndex} at {effectPosition} for client {effectMsg.SenderId}");
-                    InterfaceManager.Instance.ViewPanelController.CreateEffectAt(vfxData.Resource, effectPosition, effectMsg.Payload.CanPlaySE, effectMsg.Payload.CanPlayLowSE, PlayerObject.Local.ViewPanel.GetComponent<RectTransform>());
+                    InterfaceManager.Instance.ViewPanelController.CreateEffectAt(vfxData.Data.Resource, effectPosition, effectMsg.Payload.CanPlaySE, effectMsg.Payload.CanPlayLowSE, PlayerObject.Local.ViewPanel.GetComponent<RectTransform>());
                 }
                 break;
             default:

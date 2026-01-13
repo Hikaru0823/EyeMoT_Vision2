@@ -8,49 +8,37 @@ namespace Michsky.UI.Shift
     {
         [Header("Settings")]
         [Tooltip("Each switch must have a different tag")]
-        public string switchTag = "Switch";
+        [SerializeField] private string switchTag = "Switch";
         public bool isOn = true;
         public bool saveValue = true;
         public bool invokeAtStart = true;
 
         [Header("Events")]
-        public UnityEvent OnEvents;
-        public UnityEvent OffEvents;
+        public UnityEvent<bool> ToggleEvents;
 
         [HideInInspector] public Animator switchAnimator;
         Button switchButton;
+
+        void Start()
+        {
+            if (invokeAtStart == true) { ToggleEvents.Invoke(isOn); }
+        }
 
         void OnEnable()
         {
             if (switchAnimator == null) { switchAnimator = gameObject.GetComponent<Animator>(); }
             if (switchButton == null) { switchButton = gameObject.GetComponent<Button>(); switchButton.onClick.AddListener(AnimateSwitch); }
+            bool state = ES3.Load<bool>(SaveKey.SWITCH_STATE + switchTag, defaultValue:isOn);
 
             if (saveValue == true)
             {
-                if (PlayerPrefs.GetString(switchTag + "Switch") == "")
-                {
-                    if (isOn == true)
-                    {
-                        switchAnimator.Play("Switch On");
-                        isOn = true;
-                        PlayerPrefs.SetString(switchTag + "Switch", "true");
-                    }
-
-                    else
-                    {
-                        switchAnimator.Play("Switch Off");
-                        isOn = false;
-                        PlayerPrefs.SetString(switchTag + "Switch", "false");
-                    }
-                }
-
-                else if (PlayerPrefs.GetString(switchTag + "Switch") == "true")
+                if (state)
                 {
                     switchAnimator.Play("Switch On");
                     isOn = true;
                 }
 
-                else if (PlayerPrefs.GetString(switchTag + "Switch") == "false")
+                else
                 {
                     switchAnimator.Play("Switch Off");
                     isOn = false;
@@ -63,8 +51,7 @@ namespace Michsky.UI.Shift
                 else { switchAnimator.Play("Switch Off"); isOn = false; }
             }
 
-            if (invokeAtStart == true && isOn == true) { OnEvents.Invoke(); }
-            if (invokeAtStart == true && isOn == false) { OffEvents.Invoke(); }
+
         }
 
         public void AnimateSwitch()
@@ -73,16 +60,16 @@ namespace Michsky.UI.Shift
             {
                 switchAnimator.Play("Switch Off");
                 isOn = false;
-                OffEvents.Invoke();
-                if (saveValue == true) { PlayerPrefs.SetString(switchTag + "Switch", "false"); }
+                ToggleEvents.Invoke(isOn);
+                if (saveValue == true) { ES3.Save<bool>(SaveKey.SWITCH_STATE + switchTag, false); }
             }
 
             else
             {
                 switchAnimator.Play("Switch On");
                 isOn = true;
-                OnEvents.Invoke();
-                if (saveValue == true) { PlayerPrefs.SetString(switchTag + "Switch", "true"); }
+                ToggleEvents.Invoke(isOn);
+                if (saveValue == true) { ES3.Save<bool>(SaveKey.SWITCH_STATE + switchTag, true); }
             }
         }
     }

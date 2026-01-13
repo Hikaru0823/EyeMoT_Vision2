@@ -3,7 +3,7 @@ using KanKikuchi.AudioManager;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class VFXPreview : MonoBehaviour
+public class Preview : MonoBehaviour
 {
     [SerializeField] CanvasScaler _previewCanvas;
     [SerializeField] RawImage _previewImage;
@@ -11,27 +11,41 @@ public class VFXPreview : MonoBehaviour
     GameObject _currentVFXObject;
     string _currentPath;
     Coroutine _currentPreviewRoutine;
+    Texture _initImage;
 
-    public void PreviewVFX(VFXData vfxData)
+    public void Awake()
     {
-        Stop();
-
-        _currentPreviewRoutine = StartCoroutine(PreviewRoutine(vfxData));
+        _initImage = _previewImage.texture;
     }
 
-    private IEnumerator PreviewRoutine(VFXData vfxData)
+    public void PreviewImage(Texture2D tex)
+    {
+        StopVFX();
+
+        _previewImage.texture = tex;
+    }
+
+    public void PreviewVFX(VFX opt)
+    {
+        StopVFX();
+
+        _previewImage.texture = _initImage;
+        _currentPreviewRoutine = StartCoroutine(PreviewVFXRoutine(opt));
+    }
+
+    private IEnumerator PreviewVFXRoutine(VFX opt)
     {
         while(true)
         {
             var maxLength = Mathf.Max(_previewCanvas.referenceResolution.x, _previewCanvas.referenceResolution.y);
             var scale = (maxLength / 30) * (maxLength/_previewImage.rectTransform.rect.width) * Vector3.one;
-            _currentVFXObject = InterfaceManager.Instance.ViewPanelController.CreateEffectAt(vfxData.Resource, Vector2.zero, vfxData.Property.CanPlaySE, vfxData.Property.CanPlayLowSE, _previewParent, scale);
-            _currentPath = vfxData.Resource.CurrentSEPath;
+            _currentVFXObject = InterfaceManager.Instance.ViewPanelController.CreateEffectAt(opt.Data.Resource, Vector2.zero, opt.Property.CanPlaySE, opt.Property.CanPlayLowSE, _previewParent, scale);
+            _currentPath = opt.Data.Resource.CurrentSEPath;
             yield return new WaitForSeconds(3f);
         }
     }
 
-    public void Stop()
+    public void StopVFX()
     {
         if(_currentPreviewRoutine != null)
         {
@@ -43,6 +57,6 @@ public class VFXPreview : MonoBehaviour
             Destroy(_currentVFXObject);
             _currentVFXObject = null;
         }
-        SEManager.Instance.Stop(_currentPath);
+        SEManager.Instance?.Stop(_currentPath);
     }
 }

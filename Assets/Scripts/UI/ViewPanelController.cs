@@ -40,10 +40,10 @@ public class ViewPanelController : MonoBehaviour
                 if (!Input.GetMouseButtonDown(0)) return;
                 if (IsPointerOverBlockedUI()) return;
                 if(!TryGetViewPanelAtPointer(out Vector2 pos, out RectTransform rect)) return;
-                var data = InterfaceManager.Instance.VFXSelecterUI.CurrentVFXData;
-                if(data == null) return;
-                CreateEffectAt(data.Resource, pos, data.Property.CanPlaySE, data.Property.CanPlayLowSE, rect);
-                SendEffectAt(data, pos);
+                var opt = VFXManager.Instance.GetCurrentVFX();
+                if(opt == null) return;
+                CreateEffectAt(opt.Data.Resource, pos, opt.Property.CanPlaySE, opt.Property.CanPlayLowSE, rect);
+                SendEffectAt(opt, pos);
                 break;
             case ClientManager.NetworkRole.Client:
                 if(PlayerObject.Local == null) return;
@@ -69,14 +69,14 @@ public class ViewPanelController : MonoBehaviour
         }
     }
 
-    void SendEffectAt(VFXData vFXData, Vector2 position)
+    void SendEffectAt(VFX vFXOption, Vector2 position)
     {
         var msg = new NetMessage<EffectPositionPayload>
         {
             Type = NetMessageType.EffectPosition,
             SenderId = ClientManager.Instance.Idx,
             TargetId = 2,
-            Payload = new EffectPositionPayload { VFXTypeIndex = (int)vFXData.Type, CanPlaySE = vFXData.Property.CanPlaySE, CanPlayLowSE = vFXData.Property.CanPlayLowSE, X = position.x, Y = position.y, Z = 0 }
+            Payload = new EffectPositionPayload { VFXTypeIndex = (int)vFXOption.Data.Type, CanPlaySE = vFXOption.Property.CanPlaySE, CanPlayLowSE = vFXOption.Property.CanPlayLowSE, X = position.x, Y = position.y, Z = 0 }
         };
         string json = NetJson.ToJson(msg);
         ClientManager.Instance.SendTcp(json);
@@ -87,7 +87,7 @@ public class ViewPanelController : MonoBehaviour
         var effect = Instantiate(data.Object, rect.transform);
         var maxLength = Mathf.Max(rect.sizeDelta.x, rect.sizeDelta.y);
         effect.transform.localScale = (customScale == default) ? maxLength / 30 * Vector3.one : customScale; //30は基準サイズ
-        var effectPosition = (Vector3)position + Vector3.back *effect.transform.localScale.x; // 少し前に出す
+        var effectPosition = (Vector3)position + Vector3.back *effect.transform.localScale.x*2; // 少し前に出す
         effect.transform.localPosition = effectPosition;
         var controller = effect.GetComponent<VFXController>();
         if(controller == null)

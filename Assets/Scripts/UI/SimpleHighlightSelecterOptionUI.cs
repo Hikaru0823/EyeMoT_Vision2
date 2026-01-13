@@ -43,8 +43,6 @@ public class SimpleHighlightSelecterOptionUI : MonoBehaviour
         }
     }
 
-
-#if UNITY_EDITOR
     /// <summary>
     /// インスペクターで値が変更された時に呼ばれる（エディタのみ）
     /// </summary>
@@ -63,7 +61,6 @@ public class SimpleHighlightSelecterOptionUI : MonoBehaviour
             }
         }
     }
-#endif
 }
 
 [Serializable]
@@ -85,12 +82,12 @@ public class OptionButtonResources
         }
         else
         {
+            Debug.LogWarning("Button is null, cannot auto-assign components.");
             PreviewImage = null;
             Animation = null;
         }
     }
 
-#if UNITY_EDITOR
     /// <summary>
     /// インスペクターでの変更を検証してコンポーネントを自動割り当て（エディタのみ）
     /// </summary>
@@ -98,5 +95,4 @@ public class OptionButtonResources
     {
         AutoAssign();
     }
-#endif
 }

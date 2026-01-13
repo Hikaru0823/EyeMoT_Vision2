@@ -23,4 +23,6 @@ public class VFXHolder : ScriptableObject
         var result = _DataDictionary.TryGetValue((int)type, out data);
         return result;
     }
+
+    public int Count => _DataList.Length;
 }
