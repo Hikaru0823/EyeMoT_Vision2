@@ -6,8 +6,8 @@ public class VFXManager : MonoBehaviour
 {
     public static VFXManager Instance { get; private set; }
     [SerializeField] private VFXHolder _vfxHolder;
-    [SerializeField, ReadOnly] private VFX[] _VFXList;
-    [SerializeField, ReadOnly] private VFX CurrentVFX;
+    [SerializeField, ReadOnly] private SendableVFX[] _VFXList;
+    [SerializeField, ReadOnly] private SendableVFX CurrentVFX;
 
     void Awake()
     {
@@ -23,13 +23,13 @@ public class VFXManager : MonoBehaviour
 
     void Init()
     {
-        _VFXList = new VFX[_vfxHolder.Count];
+        _VFXList = new SendableVFX[_vfxHolder.Count];
         int index = 0;
         foreach(var def in VFXDef.TYPE.GetValues(typeof(VFXDef.TYPE)))
         {
             if(_vfxHolder.TryGet((VFXDef.TYPE)def, out var data))
             {
-                VFX vfx = new VFX();
+                SendableVFX vfx = new SendableVFX();
                 vfx.Data = data;
                 vfx.Property = new VFXProperty(); 
                 _VFXList[index] = vfx;
@@ -38,7 +38,7 @@ public class VFXManager : MonoBehaviour
         }
     }
 
-    public bool TryGet(VFXDef.TYPE type, out VFX result)
+    public bool TryGet(VFXDef.TYPE type, out SendableVFX result)
     {
         foreach(var vfx in _VFXList)
         {
@@ -67,7 +67,7 @@ public class VFXManager : MonoBehaviour
         }
     }
 
-    public VFX GetCurrentVFX()
+    public SendableVFX GetCurrentVFX()
     {
         return CurrentVFX;
     }
@@ -80,7 +80,7 @@ public class VFXManager : MonoBehaviour
     }
 }
 
-public class VFX
+public class SendableVFX : ISendable
 {
     public VFXData Data;
     public VFXProperty Property;

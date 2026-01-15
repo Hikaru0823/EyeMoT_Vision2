@@ -13,7 +13,7 @@ public class VFXController : MonoBehaviour
 
     }
 
-    public void init(VFXResource data, bool canPlaySE, bool canPlayLowSE, float aliveTimer = -1)
+    public void init(VFXResource data, bool canPlaySE, bool canPlayLowSE, float aliveTimer = -1, bool isSpatial  =false)
     {
         _ParticleSystem = GetComponent<ParticleSystem>();
         if (_ParticleSystem == null)
@@ -23,11 +23,17 @@ public class VFXController : MonoBehaviour
 
         if (canPlaySE)
         {
-            SEManager.Instance.Play(data.CurrentSEPath);
+            if (isSpatial)
+                SEManager.Instance.PlayAtPoint(data.CurrentSEPath, transform.position);
+            else
+                SEManager.Instance.Play(data.CurrentSEPath);
         }
         if (canPlayLowSE)
         {
-            SEManager.Instance.Play(SEPath.LOW50_HZ);
+            if(isSpatial)
+                SEManager.Instance.PlayAtPoint(SEPath.LOW50_HZ, transform.position);
+            else
+                SEManager.Instance.Play(SEPath.LOW50_HZ);
         }
 
         _AliveTimer = aliveTimer;

@@ -25,4 +25,6 @@ public class InterfaceManager : MonoBehaviour
     public ServerSettingUI ServerSettingUI => _serverSettingUI;
     [SerializeField] private HostDiscoveryUI _hostDiscoveryUI;
     public HostDiscoveryUI HostDiscoveryUI => _hostDiscoveryUI;
+    [SerializeField] private MainSelecterUI _mainSelecterUI;
+    public MainSelecterUI MainSelecterUI => _mainSelecterUI;
 }

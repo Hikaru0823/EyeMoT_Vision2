@@ -40,10 +40,10 @@ public class ViewPanelController : MonoBehaviour
                 if (!Input.GetMouseButtonDown(0)) return;
                 if (IsPointerOverBlockedUI()) return;
                 if(!TryGetViewPanelAtPointer(out Vector2 pos, out RectTransform rect)) return;
-                var opt = VFXManager.Instance.GetCurrentVFX();
-                if(opt == null) return;
-                CreateEffectAt(opt.Data.Resource, pos, opt.Property.CanPlaySE, opt.Property.CanPlayLowSE, rect);
-                SendEffectAt(opt, pos);
+                var opt = InterfaceManager.Instance.MainSelecterUI.GetCurrentSelected(out var sendableObj);
+                if(!opt) return;
+                CreateAt(sendableObj, pos, rect);
+                SendAt(sendableObj, pos);
                 break;
             case ClientManager.NetworkRole.Client:
                 if(PlayerObject.Local == null) return;
@@ -69,7 +69,58 @@ public class ViewPanelController : MonoBehaviour
         }
     }
 
-    void SendEffectAt(VFX vFXOption, Vector2 position)
+    public GameObject CreateAt(ISendable sendableObj, Vector2 position, RectTransform rect)
+    {
+        if (sendableObj is SendableVFX vfxOption)
+            return CreateEffectAt(vfxOption.Data.Resource, position, vfxOption.Property.CanPlaySE, vfxOption.Property.CanPlayLowSE, rect);
+        else if(sendableObj is SendableImage imageOption)
+        {   
+            return CreateImageAt(imageOption.Texture, position, rect);
+        }
+        return null;
+    }
+
+    void SendAt(ISendable sendableObj, Vector2 position)
+    {
+        if (sendableObj is SendableVFX vfxOption)
+            SendEffectAt(vfxOption, position);
+        else if (sendableObj is SendableImage imageOption)
+        {
+            SendImageAt(imageOption, position);
+        }
+    }
+
+    void SendImageAt(SendableImage imageOption, Vector2 position)
+    {
+        var msg = new NetMessage<ImagePositionPayload>
+        {
+            Type = NetMessageType.ImagePosition,
+            SenderId = ClientManager.Instance.Idx,
+            TargetId = 2,
+            Payload = new ImagePositionPayload { ImageKey = imageOption.Key, X = position.x, Y = position.y }
+        };
+        string json = NetJson.ToJson(msg);
+        ClientManager.Instance.SendTcp(json);
+    }
+
+    public GameObject CreateImageAt(Texture2D data, Vector2 position, RectTransform rect, Vector3 customScale = default)
+    {
+        var image = Instantiate(ImageManager.Instance.spritePrefab, rect.transform);
+        image.GetComponent<Image>().sprite = Sprite.Create(data, new Rect(0, 0, data.width, data.height), new Vector2(0.5f, 0.5f));
+        var maxLength = Mathf.Max(rect.sizeDelta.x, rect.sizeDelta.y);
+        image.transform.localScale = (customScale == default) ? maxLength / 500 * Vector3.one : customScale; //300は基準サイズ
+        image.transform.localPosition = position;
+        var controller = image.GetComponent<ImageController>();
+        if(controller == null)
+        {
+            Debug.LogError("ImageControllerが存在しません");
+            return null;
+        }
+        controller.init(3);
+        return image;
+    }
+
+    void SendEffectAt(SendableVFX vFXOption, Vector2 position)
     {
         var msg = new NetMessage<EffectPositionPayload>
         {
@@ -95,7 +146,7 @@ public class ViewPanelController : MonoBehaviour
             Debug.LogError("VFXControllerが存在しません");
             return null;
         }
-        controller.init(data, canPlaySE, canPlayLowSE);
+        controller.init(data, canPlaySE, canPlayLowSE, isSpatial:(customScale == default));
         return effect;
     }
 

@@ -15,10 +15,11 @@ public class ImageManager : MonoBehaviour
 
     [Header("インポート時に許可する最大ファイルサイズ(バイト)")]
     [SerializeField] private long maxImportFileSizeBytes = 3 * 1024 * 1024;
+    public GameObject spritePrefab;
 
     private ImageLoader Library { get; set; }
-    [SerializeField, ReadOnly] Dictionary<string, Texture2D> _textures = new();
-    [SerializeField, ReadOnly] string _currentImageKey = null;
+    [SerializeField, ReadOnly] List<SendableImage> _imageList = new List<SendableImage>();
+    [SerializeField, ReadOnly] SendableImage _currentImageKey = null;
 
     void Awake()
     {
@@ -63,7 +64,7 @@ public class ImageManager : MonoBehaviour
         {
             if (!File.Exists(e.cachedPath)) continue;
             if (TryLoadTexture(e.cachedPath, out var tex))
-                _textures[e.key] = tex; // keyで参照
+                _imageList.Add(new SendableImage { Key = e.key, Texture = tex }); // keyで参照
         }
     }
 
@@ -92,7 +93,14 @@ public class ImageManager : MonoBehaviour
 
     public bool TryGet(string key, out Texture2D tex)
     {
-        return _textures.TryGetValue(key, out tex);
+        var item = _imageList.Find(i => i.Key == key);
+        if (item != null)
+        {
+            tex = item.Texture;
+            return true;
+        }
+        tex = null;
+        return false;
     }
 
     public bool TryGetAll(out Dictionary<string, Texture2D> textures)
@@ -108,15 +116,26 @@ public class ImageManager : MonoBehaviour
 
     public void SetCurrentImage(string key)
     {
-        _currentImageKey = key;
+        _currentImageKey = _imageList.Find(i => i.Key == key);
+    }
+
+    public SendableImage GetCurrentImage()
+    {
+        return _currentImageKey;
     }
 
     private void ClearTextures()
     {
-        foreach (var kv in _textures)
+        foreach (var item in _imageList)
         {
-            if (kv.Value != null) Destroy(kv.Value);
+            if (item.Texture != null) Destroy(item.Texture);
         }
-        _textures.Clear();
+        _imageList.Clear();
     }
+}
+
+public class SendableImage : ISendable
+{
+    public string Key;
+    public Texture2D Texture;
 }

@@ -25,7 +25,7 @@ public class Preview : MonoBehaviour
         _previewImage.texture = tex;
     }
 
-    public void PreviewVFX(VFX opt)
+    public void PreviewVFX(SendableVFX opt)
     {
         StopVFX();
 
@@ -33,7 +33,7 @@ public class Preview : MonoBehaviour
         _currentPreviewRoutine = StartCoroutine(PreviewVFXRoutine(opt));
     }
 
-    private IEnumerator PreviewVFXRoutine(VFX opt)
+    private IEnumerator PreviewVFXRoutine(SendableVFX opt)
     {
         while(true)
         {

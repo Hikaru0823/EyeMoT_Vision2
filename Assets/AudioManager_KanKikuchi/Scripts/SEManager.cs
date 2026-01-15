@@ -67,6 +67,20 @@ public class SEManager : AudioManager<SEManager> {
     }
   }
 
+  public void PlayAtPoint(AudioClip audioClip, Vector3 position, float volumeRate = 1) {
+    volumeRate = AdjustVolumeRate(volumeRate, audioClip.name);
+    if (volumeRate > 0) {
+      RunPlayerAtPoint(audioClip, position, volumeRate);
+    }
+  }
+
+  public void PlayAtPoint(string audioPath, Vector3 position, float volumeRate = 1) {
+    volumeRate = AdjustVolumeRate(volumeRate, audioPath);
+    if (volumeRate > 0) {
+      RunPlayerAtPoint(audioPath, position, volumeRate);
+    }
+  }
+
   //=================================================================================
   //取得
   //=================================================================================

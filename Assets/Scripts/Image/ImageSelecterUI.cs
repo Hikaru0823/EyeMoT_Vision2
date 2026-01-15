@@ -10,6 +10,7 @@ public class ImageSelecterUI : SimpleHighlightSelecterOptionUI
     [SerializeField] private Transform _contentParent;
     [SerializeField] private Image _iconImage;
     [SerializeField] private ImageOption[] _ImageOptions;
+    [SerializeField] private UnityEngine.Events.UnityEvent<string> onImageChanged;
 
     void Start()
     {
@@ -26,6 +27,7 @@ public class ImageSelecterUI : SimpleHighlightSelecterOptionUI
                     new Rect(0, 0, kvp.Value.width, kvp.Value.height),
                     new Vector2(0.5f, 0.5f)
                 );
+                iconImage.preserveAspect = true;
                 var option = new ImageOption()
                 {
                     Key = kvp.Key,
@@ -39,9 +41,14 @@ public class ImageSelecterUI : SimpleHighlightSelecterOptionUI
         }
     }
 
-    void OnEnable()
+    // void OnEnable()
+    // {
+    //     // 保存されているVFXを読み込み、選択状態にする
+    //     OnSelected();
+    // }
+
+    public void OnSelected()
     {
-        // 保存されているVFXを読み込み、選択状態にする
         var savedImageKey = ES3.Load<string>(SaveKey.IMAGE_SELECTED, defaultValue: null);
         if(TryGetOption(savedImageKey, out var option))
         {
@@ -71,6 +78,7 @@ public class ImageSelecterUI : SimpleHighlightSelecterOptionUI
             ImageManager.Instance.SetCurrentImage((option as ImageOption).Key);
             ES3.Save<string>(SaveKey.IMAGE_SELECTED, (option as ImageOption).Key);
             _iconImage.sprite = option.PreviewImage.sprite;
+            onImageChanged?.Invoke("Image");
         }
     }
 }

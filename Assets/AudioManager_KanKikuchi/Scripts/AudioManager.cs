@@ -123,6 +123,17 @@ public abstract class AudioManager<T> : SingletonMonoBehaviour<T> where T : Mono
 	protected void RunPlayer(string audioPath, float volumeRate, float delay, float pitch, bool isLoop, Action callback = null) {
 		RunPlayer(GetAudioClip(audioPath), volumeRate, delay, pitch, isLoop, callback);
 	}
+
+	protected void RunPlayerAtPoint(AudioClip audioClip, Vector3 position, float volumeRate) {
+		AudioSource.PlayClipAtPoint(audioClip, position, _baseVolume * volumeRate);
+	}
+
+	protected void RunPlayerAtPoint(string audioPath, Vector3 position, float volumeRate) {
+		var audioClip = GetAudioClip(audioPath);
+		if (audioClip != null) {
+			AudioSource.PlayClipAtPoint(audioClip, position, _baseVolume * volumeRate);
+		}
+	}
 	
 	//オーディオのパスを名前に変換
 	protected string PathToName(string audioPath) {

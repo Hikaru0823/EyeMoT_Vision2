@@ -46,6 +46,13 @@ public class EffectPositionPayload
     public float Z;
 }
 
+public class ImagePositionPayload
+{
+    public string ImageKey;
+    public float X;
+    public float Y;
+}
+
 public class NetMessage<TPayload>
 {
     public string Type;

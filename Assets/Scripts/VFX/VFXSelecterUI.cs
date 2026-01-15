@@ -2,21 +2,32 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
 
 public class VFXSelecterUI : SimpleHighlightSelecterOptionUI
 {
     [SerializeField] private Image _iconImage;
     [SerializeField] private VFXOption[] _VFXOptions;
+    [SerializeField] private UnityEvent<string> onVFXChanged;
 
     void Awake()
     {
         Init(_VFXOptions);
     }
 
-    void OnEnable()
+    // void OnEnable()
+    // {
+    //     // 保存されているVFXを読み込み、選択状態にする
+    //     var savedVFXType = ES3.Load<VFXDef.TYPE>(SaveKey.VFX_SELECTED, defaultValue: VFXDef.TYPE.FIRE_00);
+    //     if(TryGetOption(savedVFXType, out var option))
+    //     {
+    //         OnOptionSelected(option);
+    //     }
+    // }
+
+    public void OnSelect()
     {
-        // 保存されているVFXを読み込み、選択状態にする
         var savedVFXType = ES3.Load<VFXDef.TYPE>(SaveKey.VFX_SELECTED, defaultValue: VFXDef.TYPE.FIRE_00);
         if(TryGetOption(savedVFXType, out var option))
         {
@@ -46,6 +57,7 @@ public class VFXSelecterUI : SimpleHighlightSelecterOptionUI
             VFXManager.Instance.SetCurrentVFX((option as VFXOption).Type);
             ES3.Save<VFXDef.TYPE>(SaveKey.VFX_SELECTED, (option as VFXOption).Type);
             _iconImage.sprite = option.PreviewImage.sprite;
+            onVFXChanged?.Invoke("VFX");
         }
     }
 

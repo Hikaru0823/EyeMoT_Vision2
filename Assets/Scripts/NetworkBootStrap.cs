@@ -285,7 +285,10 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
                 var vp = Instantiate(_clientViewPanelPrefab, _viewCanvas.transform);
                 _viewCanvas.referenceResolution = new Vector2(Display.main.systemWidth, Display.main.systemHeight);
                 vp.GetComponent<RectTransform>().sizeDelta = _viewCanvas.referenceResolution;
-                vp.GetComponent<RectTransform>().localPosition = new Vector2(-Display.main.systemWidth/2, -Display.main.systemHeight/2);
+                var centerpos = new Vector2(-Display.main.systemWidth/2, -Display.main.systemHeight/2);
+                vp.GetComponent<RectTransform>().localPosition = centerpos;
+                ResourcesManager.Instance.AudioListener.transform.SetParent(_viewCanvas.transform);
+                ResourcesManager.Instance.AudioListener.transform.localPosition = Vector3.zero;
                 var localPlayerObject = Instantiate(_playerObjectPrefab);
                 PlayerObject.Local = localPlayerObject;
                 PlayerObject.Local.Id = _clientManager.Idx;
@@ -298,6 +301,15 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
                 {
                     Debug.Log($"Create effect {(VFXDef.TYPE)effectMsg.Payload.VFXTypeIndex} at {effectPosition} for client {effectMsg.SenderId}");
                     InterfaceManager.Instance.ViewPanelController.CreateEffectAt(vfxData.Data.Resource, effectPosition, effectMsg.Payload.CanPlaySE, effectMsg.Payload.CanPlayLowSE, PlayerObject.Local.ViewPanel.GetComponent<RectTransform>());
+                }
+                break;
+            case NetMessageType.ImagePosition:
+                var imageMsg = NetJson.FromJson<NetMessage<ImagePositionPayload>>(msg);
+                var imagePosition = new Vector2(imageMsg.Payload.X, imageMsg.Payload.Y);
+                if(ImageManager.Instance.TryGet(imageMsg.Payload.ImageKey, out var imageData))
+                {
+                    Debug.Log($"Create image {imageMsg.Payload.ImageKey} at {imagePosition} for client {imageMsg.SenderId}");
+                    InterfaceManager.Instance.ViewPanelController.CreateImageAt(imageData, imagePosition, PlayerObject.Local.ViewPanel.GetComponent<RectTransform>());
                 }
                 break;
             default:
