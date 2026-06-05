@@ -19,6 +19,8 @@ public class InterfaceManager : MonoBehaviour
 
     [SerializeField] private MainPanelManager _mainPanelManager;
     public MainPanelManager MainPanelManager => _mainPanelManager;
+    [SerializeField] private MainPanelManager _selectorPanelManager;
+    public MainPanelManager SelectorPanelManager => _selectorPanelManager;
     [SerializeField] private ViewPanelController _viewPanelController;
     public ViewPanelController ViewPanelController => _viewPanelController;
     [SerializeField] private ServerSettingUI _serverSettingUI;
@@ -27,4 +29,8 @@ public class InterfaceManager : MonoBehaviour
     public HostDiscoveryUI HostDiscoveryUI => _hostDiscoveryUI;
     [SerializeField] private MainSelecterUI _mainSelecterUI;
     public MainSelecterUI MainSelecterUI => _mainSelecterUI;
+    [SerializeField] private GameObject[] _hostUIs;
+    public GameObject[] HostUIs => _hostUIs;
+    [SerializeField] private RecordTimer _recordTimer;
+    public RecordTimer RecordTimer => _recordTimer;
 }

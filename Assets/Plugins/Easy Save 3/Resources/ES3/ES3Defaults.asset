@@ -36,6 +36,7 @@ MonoBehaviour:
     - CFXRRuntime
     - endel.nativewebsocket
     - KinoBloom.Runtime
+    - Kirurobo.UniWindowController
     showAdvancedSettings: 0
   addMgrToSceneAutomatically: 0
   autoUpdateReferences: 1

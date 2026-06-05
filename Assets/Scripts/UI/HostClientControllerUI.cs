@@ -19,7 +19,7 @@ public class HostClientControllerUI : MonoBehaviour
 
     private void StartClient()
     {
-        InterfaceManager.Instance.HostDiscoveryUI.DiscoveryHosts();
+        InterfaceManager.Instance.HostDiscoveryUI.DiscoveryHostsFromServer();
     }
 
     private void StartHost()

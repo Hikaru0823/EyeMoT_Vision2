@@ -6,6 +6,8 @@ using UnityEngine.InputSystem;
 using System;
 using Michsky.UI.Shift;
 using System.Net;
+using System.Net.Sockets;
+using EyeMoTMouseModule;
 
 public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallbacks
 {
@@ -70,6 +72,7 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
         _serverManager.StartUdp();
 
         Debug.Log($"Servers started: TCP:{port}, UDP:{port + 1}");
+        EyeMoTServerConnect.Instance.AddServer(GetLocalIPAddress(), port, "123");
 
         _currentRole = ClientManager.NetworkRole.Host;
         // 自分もクライアントとして localhost に接続
@@ -90,9 +93,14 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
 
     public void Disconnect()
     {
+        foreach(var obj in InterfaceManager.Instance.HostUIs)
+        {
+            obj.SetActive(true);
+        }
         Debug.Log("Disconnect / stop host");
         CleanupCurrentRole();
         _currentRole = ClientManager.NetworkRole.None;
+        EyeMoTServerConnect.Instance.DeleteServer();
     }
 
     private async Task StartClientsAsync(string hostIp, int port)
@@ -158,6 +166,23 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
     {
         Disconnect();
     } 
+
+    private string GetLocalIPAddress()
+    {
+        try
+        {
+            using (Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, 0))
+            {
+                socket.Connect("8.8.8.8", 65530);
+                IPEndPoint endPoint = socket.LocalEndPoint as IPEndPoint;
+                return endPoint.Address.ToString();
+            }
+        }
+        catch
+        {
+            return "127.0.0.1";
+        }
+    }
 
     #region ServerCallbacks
     void IServerCallbacks.OnClientConnected(TcpServer.ClientConnection client)
@@ -268,6 +293,12 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
                 ResourcesManager.Instance.Loading.SetActive(false);
                 InterfaceManager.Instance.MainPanelManager.OpenPanel("View");
 
+                foreach(var obj in InterfaceManager.Instance.HostUIs)
+                {
+                    obj.SetActive(CurrentRole == ClientManager.NetworkRole.Host);
+                }
+                EyeMoTMouse.Instance.SetBlurImageActive(CurrentRole != ClientManager.NetworkRole.Host);
+
                 //if(CurrentRole == ClientManager.NetworkRole.Host) return;
                 
                 // ウィンドウサイズを取得
@@ -311,6 +342,15 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
                     Debug.Log($"Create image {imageMsg.Payload.ImageKey} at {imagePosition} for client {imageMsg.SenderId}");
                     InterfaceManager.Instance.ViewPanelController.CreateImageAt(imageData, imagePosition, PlayerObject.Local.ViewPanel.GetComponent<RectTransform>());
                 }
+                break;
+            case NetMessageType.EyeMoTMouseStatus:
+                var statusMsg = NetJson.FromJson<NetMessage<ChatPayload>>(msg);
+                Debug.Log($"EyeMoTMouse Status from client {statusMsg.SenderId}: {statusMsg.Payload.Text}");
+                bool isTrackable = bool.Parse(statusMsg.Payload.Text);
+                    EyeMoTMouse.Instance.StatusChange(isTrackable);
+                break;
+            case NetMessageType.RecordStart:
+                InterfaceManager.Instance.RecordTimer.StartCountDown();
                 break;
             default:
                 Debug.Log("[Client Reliable] (Unknown Role) " + msg);

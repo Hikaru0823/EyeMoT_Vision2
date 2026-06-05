@@ -116,7 +116,7 @@ public class ViewPanelController : MonoBehaviour
             Debug.LogError("ImageControllerが存在しません");
             return null;
         }
-        controller.init(3);
+        //controller.init(3);
         return image;
     }
 
@@ -138,7 +138,7 @@ public class ViewPanelController : MonoBehaviour
         var effect = Instantiate(data.Object, rect.transform);
         var maxLength = Mathf.Max(rect.sizeDelta.x, rect.sizeDelta.y);
         effect.transform.localScale = (customScale == default) ? maxLength / 30 * Vector3.one : customScale; //30は基準サイズ
-        var effectPosition = (Vector3)position + Vector3.back *effect.transform.localScale.x*2; // 少し前に出す
+        var effectPosition = (Vector3)position + Vector3.back *effect.transform.localScale.x*3; // 少し前に出す
         effect.transform.localPosition = effectPosition;
         var controller = effect.GetComponent<VFXController>();
         if(controller == null)

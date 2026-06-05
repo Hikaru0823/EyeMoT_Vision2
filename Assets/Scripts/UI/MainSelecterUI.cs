@@ -21,6 +21,11 @@ public class MainSelecterUI : MonoBehaviour
         OnSelect("None");
     }
 
+    void OnEnable()
+    {
+        InterfaceManager.Instance?.SelectorPanelManager.OpenPanel(_currentKey + "Select");
+    }
+
     public void OnSelect(string key)
     {
         if(_currentKey == key) return;

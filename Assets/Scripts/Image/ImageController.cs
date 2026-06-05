@@ -1,8 +1,8 @@
 using KanKikuchi.AudioManager;
 using System.Collections;
 using UnityEngine;
-
-public class ImageController : MonoBehaviour
+using UnityEngine.EventSystems;
+public class ImageController : MonoBehaviour, IBeginDragHandler, IEndDragHandler
 {
     bool _AliveCheckEnable = false;
     float _AliveTimer = -1;
@@ -124,5 +124,15 @@ public class ImageController : MonoBehaviour
 
         transform.localScale = endScale;
         Destroy(gameObject);
+    }
+
+    public void OnBeginDrag(PointerEventData eventData)
+    {
+        throw new System.NotImplementedException();
+    }
+
+    public void OnEndDrag(PointerEventData eventData)
+    {
+        throw new System.NotImplementedException();
     }
 }

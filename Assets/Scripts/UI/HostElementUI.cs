@@ -19,6 +19,14 @@ public class HostElementUI : MonoBehaviour
         GetComponent<Button>().onClick.AddListener(() => action(hostInfo.Address, hostInfo.TcpPort));
     }
 
+    public void SetServerInfo(ServerInfo serverInfo, Action<string, int> action)
+    {
+        _IPAdressText.text = serverInfo.ip;
+        _portText.text = serverInfo.port.ToString();
+        _playersText.text =  "0";
+        GetComponent<Button>().onClick.AddListener(() => action(serverInfo.ip, serverInfo.port));
+    }
+
     public void UpdatePing(int ping)
     {
         _pingText.text = ping.ToString();

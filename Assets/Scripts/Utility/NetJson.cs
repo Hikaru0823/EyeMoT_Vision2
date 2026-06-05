@@ -73,4 +73,6 @@ public class NetMessageType
     public const string ImagePosition = "ImagePosition";
     public const string IAmHost = "IAmHost";
     public const string ScreenSize = "ScreenSize";
+    public const string EyeMoTMouseStatus = "EyeMoTMouseStatus";
+    public const string RecordStart = "RecordStart";
 }

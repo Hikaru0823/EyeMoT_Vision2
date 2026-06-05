@@ -16,15 +16,19 @@ public class VFXSelecterUI : SimpleHighlightSelecterOptionUI
         Init(_VFXOptions);
     }
 
-    // void OnEnable()
-    // {
-    //     // 保存されているVFXを読み込み、選択状態にする
-    //     var savedVFXType = ES3.Load<VFXDef.TYPE>(SaveKey.VFX_SELECTED, defaultValue: VFXDef.TYPE.FIRE_00);
-    //     if(TryGetOption(savedVFXType, out var option))
-    //     {
-    //         OnOptionSelected(option);
-    //     }
-    // }
+    void OnEnable()
+    {
+        // 保存されているVFXを読み込み、選択状態にする
+        // var savedVFXType = ES3.Load<VFXDef.TYPE>(SaveKey.VFX_SELECTED, defaultValue: VFXDef.TYPE.FIRE_00);
+        // if(TryGetOption(savedVFXType, out var option))
+        // {
+        //     OnOptionSelected(option);
+        // }
+        // if(InterfaceManager.Instance?.SelectorPanelManager.GetCurrentPanel() == "VFXSelect")
+        // {
+        //     InterfaceManager.Instance.SelectorPanelManager.OpenPanel("VFXSelect");
+        // }
+    }
 
     public void OnSelect()
     {

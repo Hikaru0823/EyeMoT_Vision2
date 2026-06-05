@@ -223,6 +223,10 @@ namespace Michsky.UI.Shift
             }
         }
 
-        public string GetCurrentPanel() => panels[currentPanelIndex].panelName;
+        public string GetCurrentPanel()
+        {
+            if(currentPanelIndex < 0 || currentPanelIndex >= panels.Count) return null;
+            return panels[currentPanelIndex].panelName;
+        }
     }
 }

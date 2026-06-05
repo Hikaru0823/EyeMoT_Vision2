@@ -41,11 +41,14 @@ public class ImageSelecterUI : SimpleHighlightSelecterOptionUI
         }
     }
 
-    // void OnEnable()
-    // {
-    //     // 保存されているVFXを読み込み、選択状態にする
-    //     OnSelected();
-    // }
+    void OnEnable()
+    {
+        // 保存されているVFXを読み込み、選択状態にする
+        // if(InterfaceManager.Instance?.SelectorPanelManager.GetCurrentPanel() == "ImageSelect")
+        // {
+        //     InterfaceManager.Instance.SelectorPanelManager.OpenPanel("ImageSelect");
+        // }
+    }
 
     public void OnSelected()
     {
