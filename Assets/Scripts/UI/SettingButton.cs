@@ -4,7 +4,7 @@ public class SettingsButton : MonoBehaviour
 {
     public void OnClicked()
     {
-        if(InterfaceManager.Instance.MainPanelManager.GetCurrentPanel() == "Settings")
+        if(InterfaceManager.Instance.MainPanelManager.GetCurrentPanelName() == "Settings")
             OnReturnClicked();
         else
             InterfaceManager.Instance.MainPanelManager.OpenPanel("Settings");

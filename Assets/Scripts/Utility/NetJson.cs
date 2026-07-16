@@ -49,6 +49,14 @@ public class EffectPositionPayload
 public class ImagePositionPayload
 {
     public string ImageKey;
+    public string ImageGUID;
+    public float X;
+    public float Y;
+}
+
+public class ImageDynamicPositionPayload
+{
+    public string ImageGUID;
     public float X;
     public float Y;
 }
@@ -70,7 +78,9 @@ public class NetMessageType
     public const string MouseCreate = "MouseCreate";
     public const string MousePosition = "MousePosition";
     public const string EffectPosition = "EffectPosition";
-    public const string ImagePosition = "ImagePosition";
+    public const string ImageSpawnPosition = "ImageSpawnPosition";
+    public const string ImageDynamicPosition = "ImageDynamicPosition";
+    public const string ImageDestroy = "ImageDestroy";
     public const string IAmHost = "IAmHost";
     public const string ScreenSize = "ScreenSize";
     public const string EyeMoTMouseStatus = "EyeMoTMouseStatus";

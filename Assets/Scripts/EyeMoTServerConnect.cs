@@ -12,6 +12,8 @@ public class EyeMoTServerConnect : Singleton<EyeMoTServerConnect>
     private int _currentPort;
     private string _currentPassword;
 
+    //protected override bool PersistAcrossScenes => true;
+
     public void AddServer(string ip, int port, string password)
     {
         _currentIp = ip;

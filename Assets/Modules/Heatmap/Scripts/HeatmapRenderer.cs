@@ -19,7 +19,7 @@ namespace EyeMoT.Heatmap
                 return;
             }
             Instance = this;
-            DontDestroyOnLoad(this.gameObject);
+            //DontDestroyOnLoad(this.gameObject);
         }
         #endregion
         

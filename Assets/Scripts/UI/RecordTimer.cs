@@ -32,6 +32,7 @@ public class RecordTimer : MonoBehaviour
         }
         onComplete?.Invoke();
         _timerText.text = "Start";
+        
         yield return new WaitForSeconds(0.5f);
         _timerText.enabled = false;
     }

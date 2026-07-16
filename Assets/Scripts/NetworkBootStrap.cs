@@ -99,6 +99,7 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
         }
         Debug.Log("Disconnect / stop host");
         CleanupCurrentRole();
+        RecordManager.Instance.Init();
         _currentRole = ClientManager.NetworkRole.None;
         EyeMoTServerConnect.Instance.DeleteServer();
     }
@@ -334,13 +335,13 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
                     InterfaceManager.Instance.ViewPanelController.CreateEffectAt(vfxData.Data.Resource, effectPosition, effectMsg.Payload.CanPlaySE, effectMsg.Payload.CanPlayLowSE, PlayerObject.Local.ViewPanel.GetComponent<RectTransform>());
                 }
                 break;
-            case NetMessageType.ImagePosition:
+            case NetMessageType.ImageSpawnPosition:
                 var imageMsg = NetJson.FromJson<NetMessage<ImagePositionPayload>>(msg);
                 var imagePosition = new Vector2(imageMsg.Payload.X, imageMsg.Payload.Y);
                 if(ImageManager.Instance.TryGet(imageMsg.Payload.ImageKey, out var imageData))
                 {
                     Debug.Log($"Create image {imageMsg.Payload.ImageKey} at {imagePosition} for client {imageMsg.SenderId}");
-                    InterfaceManager.Instance.ViewPanelController.CreateImageAt(imageData, imagePosition, PlayerObject.Local.ViewPanel.GetComponent<RectTransform>());
+                    InterfaceManager.Instance.ViewPanelController.CreateImageAt(imageData, imageMsg.Payload.ImageGUID, imagePosition, PlayerObject.Local.ViewPanel.GetComponent<RectTransform>());
                 }
                 break;
             case NetMessageType.EyeMoTMouseStatus:
@@ -351,6 +352,11 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
                 break;
             case NetMessageType.RecordStart:
                 InterfaceManager.Instance.RecordTimer.StartCountDown();
+                break;
+            case NetMessageType.ImageDestroy:
+                var destroyMsg = NetJson.FromJson<NetMessage<ChatPayload>>(msg);
+                Debug.Log($"Destroy image {destroyMsg.Payload.Text} for client {destroyMsg.SenderId}");
+                InterfaceManager.Instance.ViewPanelController.ReceiveDestroyImage(destroyMsg.Payload.Text);
                 break;
             default:
                 Debug.Log("[Client Reliable] (Unknown Role) " + msg);
@@ -388,6 +394,10 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
                 {
                     plObj.MouseController.SetPosition(new Vector2(mousePos.Payload.X, mousePos.Payload.Y));
                 }
+                break;
+            case NetMessageType.ImageDynamicPosition:
+                var imagePos = NetJson.FromJson<NetMessage<ImageDynamicPositionPayload>>(msg);
+                InterfaceManager.Instance.ViewPanelController.ReceiveImageAt(imagePos.Payload.ImageGUID, new Vector2(imagePos.Payload.X, imagePos.Payload.Y));
                 break;
             default:
                 Debug.Log("[Client Unreliable] (Unknown Role) " + msg);

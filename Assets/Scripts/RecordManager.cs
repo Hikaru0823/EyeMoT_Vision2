@@ -7,6 +7,18 @@ using UnityEngine.UI;
 
 public class RecordManager : MonoBehaviour
 {
+    public static RecordManager Instance { get; private set; }
+    void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(this.gameObject);
+        }
+        else
+        {
+            Instance = this;
+        }
+    }
     [Header("Resources")]
     [SerializeField] private Sprite[] _recordIcon; // 0: Record, 1: Stop
     [SerializeField] private Image _recordButtonImage;
@@ -27,8 +39,16 @@ public class RecordManager : MonoBehaviour
         }
     }
 
+    public void Init()
+    {
+        HeatmapRenderer.Instance.StopHeatmap(false);
+        _recordButtonImage.sprite = _recordIcon[0];
+        OnHideHeatmapButtonPressed();
+    }
+
     public void OnHideHeatmapButtonPressed()
     {
+        HeatmapRenderer.Instance.ClearHeatmap();
         HeatmapRenderer.Instance.VisibleHeatmap(false);
         _hideHeatmapButton.gameObject.SetActive(false);
     }
@@ -49,6 +69,7 @@ public class RecordManager : MonoBehaviour
 
     public void RecordStart()
     {
+        HeatmapRenderer.Instance.ClearHeatmap();
         InterfaceManager.Instance.RecordTimer.StartCountDown(() =>
         {
             #if !UNITY_WEBGL || UNITY_EDITOR

@@ -10,19 +10,16 @@ namespace Michsky.UI.Shift
         public List<PanelItem> panels = new List<PanelItem>();
 
         [Header("Settings")]
-        [SerializeField] private bool isMain = false;
-        [SerializeField] private bool useCulling = true;
         public int currentPanelIndex = 0;
-        private int currentButtonIndex = 0;
         private int newPanelIndex;
+        public int currentButtonIndex = 0;
 
         private GameObject currentPanel;
         private GameObject nextPanel;
-        private GameObject currentButton;
-        private GameObject nextButton;
 
         private Animator currentPanelAnimator;
         private Animator nextPanelAnimator;
+
         private Animator currentButtonAnimator;
         private Animator nextButtonAnimator;
 
@@ -30,185 +27,84 @@ namespace Michsky.UI.Shift
         string panelFadeOut = "Panel Out";
         string buttonFadeIn = "Normal to Pressed";
         string buttonFadeOut = "Pressed to Dissolve";
-        string buttonFadeNormal = "Pressed to Normal";
-
-        bool firstTime = true;
 
         [System.Serializable]
         public class PanelItem
         {
             public string panelName;
             public GameObject panelObject;
-            public GameObject buttonObject;
+            public Object buttonObject;
         }
 
         void OnEnable()
         {
-            if (firstTime == false && nextPanelAnimator != null && nextPanelAnimator.gameObject.activeInHierarchy)
-            {
-                nextPanelAnimator.Play(panelFadeIn);
-                if (nextButtonAnimator != null)
-                    nextButtonAnimator.Play(buttonFadeIn);
-            }
-
-            else if (firstTime == false && currentPanelAnimator != null && currentPanelAnimator.gameObject.activeInHierarchy)
-            {
-                currentPanelAnimator.Play(panelFadeIn);
-                if (currentButtonAnimator != null)
-                    currentButtonAnimator.Play(buttonFadeIn);
-            }
-        }
-
-        void Awake()
-        {
-            if(currentPanelIndex <0) return;
-
-            if(panels[currentPanelIndex].buttonObject != null)
-            {
-                currentButton = panels[currentPanelIndex].buttonObject;
-                currentButtonAnimator = currentButton.GetComponent<Animator>();
-                currentButtonAnimator.Play(buttonFadeIn);
-            }
-
-            currentPanel = panels[currentPanelIndex].panelObject;
-            currentPanelAnimator = currentPanel.GetComponent<Animator>();
-            currentPanelAnimator.Play(panelFadeIn);
-
-            firstTime = false;
-
-            if (useCulling == false)
+            if (!IsValidPanelIndex(currentPanelIndex))
                 return;
+
+            currentButtonIndex = currentPanelIndex;
+
+            currentPanel = panels[currentPanelIndex]?.panelObject;
+            currentPanelAnimator = currentPanel?.GetComponent<Animator>();
+            currentPanelAnimator?.Play(panelFadeIn);
+
+            currentButtonAnimator = GetButtonAnimator(currentPanelIndex);
+            currentButtonAnimator?.Play(buttonFadeIn);
 
             StartCoroutine("DisablePreviousPanel");
         }
 
-        public void OpenFirstTab()
-        {
-            if (currentPanelIndex != 0)
-                OpenPanel(panels[0].panelName);
-        }
-
         public void OpenPanel(string newPanel)
         {
+            bool panelFound = false;
+
             for (int i = 0; i < panels.Count; i++)
             {
-                if (panels[i].panelName == newPanel)
+                if (panels[i]?.panelName == newPanel)
                 {
                     newPanelIndex = i;
+                    panelFound = true;
                     break;
                 }
             }
 
-            if (newPanelIndex != currentPanelIndex)
+            if (panelFound && newPanelIndex != currentPanelIndex && IsValidPanelIndex(currentPanelIndex) && IsValidPanelIndex(newPanelIndex))
             {
                 StopCoroutine("DisablePreviousPanel");
 
-                if(currentPanelIndex != -1 && panels[currentPanelIndex].panelObject != null)
-                {
-                    currentPanel = panels[currentPanelIndex].panelObject;
-                    currentPanelAnimator = currentPanel.GetComponent<Animator>();
-                    currentPanelAnimator.Play(panelFadeOut);
-                }
-                    
+                //パネルの管理
+                //移動前パネルと移動後パネルを取得
+                currentPanel = panels[currentPanelIndex]?.panelObject;
                 currentPanelIndex = newPanelIndex;
-                nextPanel = panels[currentPanelIndex].panelObject;
-                nextPanel.SetActive(true);
-                nextPanelAnimator = nextPanel.GetComponent<Animator>();
-                nextPanelAnimator.Play(panelFadeIn);
+                nextPanel = panels[currentPanelIndex]?.panelObject;
+                nextPanel?.SetActive(true);
 
-                StartCoroutine("DisablePreviousPanel");
+                //パネルのアニメーション管理
+                currentPanelAnimator = currentPanel?.GetComponent<Animator>();
+                nextPanelAnimator = nextPanel?.GetComponent<Animator>();
+                currentPanelAnimator?.Play(panelFadeOut);
+                nextPanelAnimator?.Play(panelFadeIn);
 
-                if(panels[currentButtonIndex].buttonObject != null)
-                {
-                    currentButton = panels[currentButtonIndex].buttonObject;
-                    currentButtonAnimator = currentButton.GetComponent<Animator>();
-                    currentButtonAnimator.Play(buttonFadeOut);
-                }
-
+                //ボタンの管理
+                //移動前ボタンと移動後ボタンを取得
+                currentButtonAnimator = GetButtonAnimator(currentButtonIndex);
                 currentButtonIndex = newPanelIndex;
+                nextButtonAnimator = GetButtonAnimator(currentButtonIndex);
 
-                if(panels[newPanelIndex].buttonObject != null)
-                {
-                    nextButton = panels[currentButtonIndex].buttonObject;
-                    nextButtonAnimator = nextButton.GetComponent<Animator>();
-                    nextButtonAnimator.Play(buttonFadeIn);
-                }
-            }
-            else
-            {
-                if(isMain == true) return;
-                if(currentPanelIndex != -1 && panels[currentPanelIndex].panelObject != null)
-                {
-                    currentPanel = panels[currentPanelIndex].panelObject;
-                    currentPanelAnimator = currentPanel.GetComponent<Animator>();
-                    currentPanelAnimator.Play(panelFadeOut);
-                }
-                if(panels[currentButtonIndex].buttonObject != null)
-                {
-                    currentButton = panels[currentButtonIndex].buttonObject;
-                    currentButtonAnimator = currentButton.GetComponent<Animator>();
-                    currentButtonAnimator.Play(buttonFadeOut);
-                }
-                currentPanelIndex = -1;
+                //ボタンのアニメーション管理
+                currentButtonAnimator?.Play(buttonFadeOut);
+                nextButtonAnimator?.Play(buttonFadeIn);
+
+                if(gameObject.activeInHierarchy)
+                    StartCoroutine("DisablePreviousPanel");
             }
         }
 
-        public void NextPage()
+        public string GetCurrentPanelName()
         {
-            if (currentPanelIndex <= panels.Count - 2)
-            {
-                StopCoroutine("DisablePreviousPanel");
+            if (!IsValidPanelIndex(currentPanelIndex))
+                return string.Empty;
 
-                currentPanel = panels[currentPanelIndex].panelObject;
-                currentButton = panels[currentButtonIndex].buttonObject;
-                nextButton = panels[currentButtonIndex + 1].buttonObject;
-                currentPanel.gameObject.SetActive(true);
-
-                currentPanelAnimator = currentPanel.GetComponent<Animator>();
-                currentButtonAnimator = currentButton.GetComponent<Animator>();
-
-                currentButtonAnimator.Play(buttonFadeNormal);
-                currentPanelAnimator.Play(panelFadeOut);
-
-                currentPanelIndex += 1;
-                currentButtonIndex += 1;
-                nextPanel = panels[currentPanelIndex].panelObject;
-                nextPanel.gameObject.SetActive(true);
-
-                nextPanelAnimator = nextPanel.GetComponent<Animator>();
-                nextPanelAnimator.Play(panelFadeIn);
-                nextButtonAnimator = nextButton.GetComponent<Animator>();
-                nextButtonAnimator.Play(buttonFadeIn);
-            }
-        }
-
-        public void PrevPage()
-        {
-            if (currentPanelIndex >= 1)
-            {
-                StopCoroutine("DisablePreviousPanel");
-
-                currentPanel = panels[currentPanelIndex].panelObject;
-                currentButton = panels[currentButtonIndex].buttonObject;
-                nextButton = panels[currentButtonIndex - 1].buttonObject;
-                currentPanel.gameObject.SetActive(true);
-
-                currentPanelAnimator = currentPanel.GetComponent<Animator>();
-                currentButtonAnimator = currentButton.GetComponent<Animator>();
-
-                currentButtonAnimator.Play(buttonFadeNormal);
-                currentPanelAnimator.Play(panelFadeOut);
-
-                currentPanelIndex -= 1;
-                currentButtonIndex -= 1;
-                nextPanel = panels[currentPanelIndex].panelObject;
-                nextPanel.gameObject.SetActive(true);
-
-                nextPanelAnimator = nextPanel.GetComponent<Animator>();
-                nextButtonAnimator = nextButton.GetComponent<Animator>();
-                nextPanelAnimator.Play(panelFadeIn);
-                nextButtonAnimator.Play(buttonFadeIn);
-            }
+            return panels[currentPanelIndex]?.panelName;
         }
 
         IEnumerator DisablePreviousPanel()
@@ -219,14 +115,29 @@ namespace Michsky.UI.Shift
                 if (i == currentPanelIndex)
                     continue;
 
-                panels[i].panelObject.gameObject.SetActive(false);
+                panels[i]?.panelObject?.SetActive(false);
             }
         }
 
-        public string GetCurrentPanel()
+        private bool IsValidPanelIndex(int index)
         {
-            if(currentPanelIndex < 0 || currentPanelIndex >= panels.Count) return null;
-            return panels[currentPanelIndex].panelName;
+            return panels != null && index >= 0 && index < panels.Count;
+        }
+
+        private Animator GetButtonAnimator(int index)
+        {
+            if (!IsValidPanelIndex(index))
+                return null;
+
+            Object buttonObject = panels[index]?.buttonObject;
+
+            if (buttonObject is GameObject buttonGameObject)
+                return buttonGameObject.GetComponent<Animator>();
+
+            if (buttonObject is Component buttonComponent)
+                return buttonComponent.GetComponent<Animator>();
+
+            return null;
         }
     }
 }

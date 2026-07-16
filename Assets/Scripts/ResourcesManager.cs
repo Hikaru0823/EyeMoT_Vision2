@@ -1,4 +1,5 @@
 using System;
+using KanKikuchi.AudioManager;
 using UnityEngine;
 
 public class ResourcesManager : MonoBehaviour
@@ -20,5 +21,6 @@ public class ResourcesManager : MonoBehaviour
             return;
         }
         Instance = this;
+        BGMManager.Instance.Play(BGMPath.POP_BGM, 0.5f);
     }
 }

@@ -15,31 +15,47 @@ public class MainSelecterUI : MonoBehaviour
     [SerializeField] private Selcter[] _selecters;
 
     [SerializeField, ReadOnly] private string _currentKey = "";
+    [SerializeField, ReadOnly] private string _currentSelecter = "";
 
     void Start()
     {
-        OnSelect("None");
+        foreach(var selcter in _selecters)
+        {
+            selcter.Highlight.enabled = false;
+        }
     }
 
-    void OnEnable()
-    {
-        InterfaceManager.Instance?.SelectorPanelManager.OpenPanel(_currentKey + "Select");
-    }
+    // void OnEnable()
+    // {
+    //     InterfaceManager.Instance?.SelectorPanelManager.OpenPanel(_currentKey + "Select");
+    // }
 
     public void OnSelect(string key)
     {
-        if(_currentKey == key) return;
+        //Debug.Log("MainSelecterUI OnSelect: " + key + " CurrentKey: " + _currentKey);
+        if(_currentKey == key)
+        {
+            // foreach(var selcter in _selecters)
+            // {
+            //     selcter.Highlight.enabled = false;
+            // }
+            _currentKey = "";  
+            InterfaceManager.Instance?.SelectorPanelManager.OpenPanel("Null");
+            return;
+        }
 
         foreach(var selcter in _selecters)
         {
             selcter.Highlight.enabled = (selcter.Key == key);
         }
         _currentKey = key;
+        _currentSelecter = key;
+        InterfaceManager.Instance?.SelectorPanelManager.OpenPanel(_currentKey + "Select");
     }
 
     public bool GetCurrentSelected(out ISendable sendableObj)
     {
-        switch(_currentKey)
+        switch(_currentSelecter)
         {
             case "Image":
                 sendableObj = ImageManager.Instance.GetCurrentImage();

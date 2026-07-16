@@ -34,7 +34,7 @@ namespace Michsky.UI.Shift
                 mainPanels.SetActive(true);
 
                 mainPanelsAnimator.Play("Start");
-                mpm.OpenFirstTab();
+                //mpm.OpenFirstTab();
             }
 
             if (enableLoginScreen == false && enablePressAnyKeyScreen == true && disableSplashScreen == false)

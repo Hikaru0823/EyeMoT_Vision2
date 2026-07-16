@@ -32,7 +32,7 @@ public class ImageSettingButton : MonoBehaviour, IPointerEnterHandler
         private void PreviewVFX()
         {
             Debug.Log("Preview VFX:" + _type);
-            if (VFXManager.Instance.TryGet(_type, out var data) && InterfaceManager.Instance.MainPanelManager.GetCurrentPanel() == "Settings")
+            if (VFXManager.Instance.TryGet(_type, out var data) && InterfaceManager.Instance.MainPanelManager.GetCurrentPanelName() == "Settings")
                 preview.PreviewVFX(data);
         }
     }
