@@ -20,6 +20,8 @@ public class UdpServer : IServer
     public event Action<IPEndPoint, string> MessageReceived;
     public event Action<Exception> Error;
 
+    public int Port { get { return _port; } }
+
     public UdpServer(int port, int discoveryPort)
     {
         _port = port;
@@ -34,7 +36,6 @@ public class UdpServer : IServer
         _discoveryUdp = new UdpClient(_discoveryPort);
         _cts = new CancellationTokenSource();
         _receiveTask = Task.Run(() => ReceiveLoopAsync(_cts.Token));
-        _discoveryTask = Task.Run(() => ReceiveDiscoveryLoopAsync(_cts.Token));
     }
 
     public void Stop()
@@ -76,60 +77,6 @@ public class UdpServer : IServer
                 var msg = Encoding.UTF8.GetString(result.Buffer);
 
                 MessageReceived?.Invoke(ep, msg);
-            }
-        }
-        catch (Exception ex)
-        {
-            if (!token.IsCancellationRequested)
-                Error?.Invoke(ex);
-        }
-    }
-
-    private async Task ReceiveDiscoveryLoopAsync(CancellationToken token)
-    {
-        try
-        {
-            while (!token.IsCancellationRequested)
-            {
-                UdpReceiveResult result;
-                try
-                {
-                    result = await _discoveryUdp.ReceiveAsync().ConfigureAwait(false);
-                }
-                catch (ObjectDisposedException)
-                {
-                    break;
-                }
-
-                var ep = result.RemoteEndPoint;
-                var msg = Encoding.UTF8.GetString(result.Buffer);
-
-                if(NetJson.FromJson<NetMessage<object>>(msg).Type == NetMessageType.DiscoveryRequest)
-                {
-                    var responseMsg = new NetMessage<HostInfo>
-                    {
-                        Type = NetMessageType.IAmHost,
-                        SenderId = -1, // サーバID
-                        Payload = new HostInfo
-                        {
-                            Name = Dns.GetHostName(),
-                            Address = GetLocalIPAddress(),
-                            TcpPort = _port-1, // TCPポートはUDPポートの-1とする慣例
-                            UdpPort = _port,
-                            //Players = _clients.Count
-                        }
-                    };
-                    var responseJson = NetJson.ToJson(responseMsg);
-                    var responseBytes = Encoding.UTF8.GetBytes(responseJson);
-                    try
-                    {
-                        await _discoveryUdp.SendAsync(responseBytes, responseBytes.Length, ep);
-                    }
-                    catch (Exception ex)
-                    {
-                        Error?.Invoke(ex);
-                    }
-                }
             }
         }
         catch (Exception ex)

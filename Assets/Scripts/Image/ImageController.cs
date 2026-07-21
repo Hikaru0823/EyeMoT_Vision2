@@ -31,17 +31,6 @@ public class ImageController : MonoBehaviour
         }
     }
 
-    public void init(float aliveTimer = -1)
-    {
-        _AliveTimer = aliveTimer;
-        if (0 < aliveTimer)
-        {
-            _AliveCheckEnable = true;
-        }
-
-        playPopScale();
-    }
-
     // Update is called once per frame
     void Update()
     {
@@ -79,15 +68,15 @@ public class ImageController : MonoBehaviour
 
     void SendImageAt(Vector2 position)
     {
-        var msg = new NetMessage<ImageDynamicPositionPayload>
+        var msg = new NetMessage<ImagePositionPayload>
         {
-            Type = NetMessageType.ImageDynamicPosition,
-            SenderId = ClientManager.Instance.Idx,
-            TargetId = 2,
-            Payload = new ImageDynamicPositionPayload { ImageGUID = ImageGUID, X = position.x, Y = position.y }
+            Type = NetMessageType.ImagePosition,
+            SenderId = -1,
+            TargetId = -2,
+            Payload = new ImagePositionPayload { ImageGUID = ImageGUID, X = position.x, Y = position.y }
         };
         string json = NetJson.ToJson(msg);
-        ClientManager.Instance.SendUdp(json);
+        ServerManager.Instance.SendUdp(json);
     }
 
     public void ReceiveImageAt(Vector2 position)
@@ -108,45 +97,6 @@ public class ImageController : MonoBehaviour
             _AliveCheckEnable = false;
             playDisappearScale();
         }
-    }
-
-    void playPopScale()
-    {
-        if (_PopCoroutine != null)
-        {
-            StopCoroutine(_PopCoroutine);
-        }
-        _PopCoroutine = StartCoroutine(popScaleRoutine());
-    }
-
-    IEnumerator popScaleRoutine()
-    {
-        Vector3 baseScale = transform.localScale;
-        Vector3 startScale = baseScale * _PopStartScale;
-        Vector3 overshootScale = baseScale * _PopOvershootScale;
-
-        transform.localScale = startScale;
-
-        float t = 0f;
-        while (t < _PopInDuration)
-        {
-            t += Time.deltaTime;
-            float ratio = _PopInDuration <= 0f ? 1f : Mathf.Clamp01(t / _PopInDuration);
-            transform.localScale = Vector3.Lerp(startScale, overshootScale, ratio);
-            yield return null;
-        }
-
-        t = 0f;
-        while (t < _PopOutDuration)
-        {
-            t += Time.deltaTime;
-            float ratio = _PopOutDuration <= 0f ? 1f : Mathf.Clamp01(t / _PopOutDuration);
-            transform.localScale = Vector3.Lerp(overshootScale, baseScale, ratio);
-            yield return null;
-        }
-
-        transform.localScale = baseScale;
-        _PopCoroutine = null;
     }
 
     void playDisappearScale()
@@ -183,15 +133,15 @@ public class ImageController : MonoBehaviour
 
     public void DestroyImage()
     {
-        var msg = new NetMessage<ChatPayload>
+        var msg = new NetMessage<StringPayload>
         {
             Type = NetMessageType.ImageDestroy,
-            SenderId = ClientManager.Instance.Idx,
-            TargetId = 2,
-            Payload = new ChatPayload { Text = ImageGUID }
+            SenderId = -1,
+            TargetId = -2,
+            Payload = new StringPayload { Text = ImageGUID }
         };
         string json = NetJson.ToJson(msg);
-        ClientManager.Instance.SendTcp(json);
+        ServerManager.Instance.SendTcp(json);
         Destroy(gameObject);
     }
 }

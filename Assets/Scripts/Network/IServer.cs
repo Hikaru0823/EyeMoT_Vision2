@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 
 public interface IServer
 {
+    int Port { get; }
     void StartServer();
     void Stop();
     void Tick();

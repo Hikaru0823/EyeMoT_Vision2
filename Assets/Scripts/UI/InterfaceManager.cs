@@ -23,6 +23,8 @@ public class InterfaceManager : MonoBehaviour
     public MainPanelManager SelectorPanelManager => _selectorPanelManager;
     [SerializeField] private ViewPanelController _viewPanelController;
     public ViewPanelController ViewPanelController => _viewPanelController;
+    [SerializeField] private ViewPanelUI _viewPanelUI;
+    public ViewPanelUI ViewPanelUI => _viewPanelUI;
     [SerializeField] private ServerSettingUI _serverSettingUI;
     public ServerSettingUI ServerSettingUI => _serverSettingUI;
     [SerializeField] private HostDiscoveryUI _hostDiscoveryUI;

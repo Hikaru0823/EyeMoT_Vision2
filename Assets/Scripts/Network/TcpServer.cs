@@ -15,7 +15,7 @@ public class TcpServer : IServer
     private readonly int _port;
     private TcpListener _listener;
     private CancellationTokenSource _cts;
-    private int _nextClientId = 1;
+    private int _nextClientId = 0;
 
     public class ClientConnection
     {
@@ -30,6 +30,8 @@ public class TcpServer : IServer
     public event Action<ClientConnection> ClientDisconnected;
     public event Action<IPEndPoint, string> MessageReceived;
     public event Action<Exception> Error;
+
+    public int Port { get { return _port; } }
 
     public TcpServer(int port)
     {
@@ -81,7 +83,7 @@ public class TcpServer : IServer
                 var stream = client.GetStream();
                 var reader = new StreamReader(stream, Encoding.UTF8);
                 var writer = new StreamWriter(stream, Encoding.UTF8) { AutoFlush = true };
-                var id = _nextClientId++;
+                var id = _nextClientId;
                 var conn = new ClientConnection
                 {
                     Id = id,
@@ -93,6 +95,7 @@ public class TcpServer : IServer
                 ClientConnected?.Invoke(conn);
 
                 conn.ReceiveTask = Task.Run(() => ReceiveLoopAsync(conn, token));
+                _nextClientId++;
             }
         }
         catch (ObjectDisposedException)

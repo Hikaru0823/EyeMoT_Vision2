@@ -7,6 +7,7 @@ using UnityEngine.Networking;
 public class EyeMoTServerConnect : Singleton<EyeMoTServerConnect>
 {
     [SerializeField] private string url = "https://www.poran.net/eyemot/_TEST_/server_api.php";
+    [SerializeField] private string globalIpFallbackUrl = "https://api.ipify.org";
     public List<ServerInfo> serverList = new List<ServerInfo>();
     private string _currentIp;
     private int _currentPort;
@@ -84,6 +85,52 @@ public class EyeMoTServerConnect : Singleton<EyeMoTServerConnect>
         StartCoroutine(GetServerListCoroutine(onComplete));
     }
 
+    public void GetGlobalIPAddress(System.Action<string> onComplete)
+    {
+        StartCoroutine(GetGlobalIPAddressCoroutine(onComplete));
+    }
+
+    private IEnumerator GetGlobalIPAddressCoroutine(System.Action<string> onComplete)
+    {
+        WWWForm form = new WWWForm();
+        form.AddField("action", "global_ip");
+
+        using (UnityWebRequest request = UnityWebRequest.Post(url, form))
+        {
+            yield return request.SendWebRequest();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                onComplete?.Invoke(request.downloadHandler.text.Trim());
+            }
+            else
+            {
+                Debug.LogWarning("Global IP fetch from server failed. Trying fallback: " + request.error);
+                Debug.LogWarning(request.downloadHandler.text);
+                yield return GetGlobalIPAddressFallbackCoroutine(onComplete);
+            }
+        }
+    }
+
+    private IEnumerator GetGlobalIPAddressFallbackCoroutine(System.Action<string> onComplete)
+    {
+        using (UnityWebRequest request = UnityWebRequest.Get(globalIpFallbackUrl))
+        {
+            yield return request.SendWebRequest();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                onComplete?.Invoke(request.downloadHandler.text.Trim());
+            }
+            else
+            {
+                Debug.LogError("Global IP fallback fetch failed: " + request.error);
+                Debug.LogError(request.downloadHandler.text);
+                onComplete?.Invoke("");
+            }
+        }
+    }
+
     private IEnumerator GetServerListCoroutine(System.Action<List<ServerInfo>> onComplete)
     {
         WWWForm form = new WWWForm();
@@ -149,6 +196,7 @@ public class EyeMoTServerConnect : Singleton<EyeMoTServerConnect>
             string ip = columns[1];
             string portText = columns[2];
             string password = columns[3];
+            string globalIp = columns.Length >= 5 ? columns[4] : "";
 
             if (!int.TryParse(portText, out int port))
             {
@@ -156,7 +204,7 @@ public class EyeMoTServerConnect : Singleton<EyeMoTServerConnect>
                 continue;
             }
 
-            ServerInfo info = new ServerInfo(createdAt, ip, port, password);
+            ServerInfo info = new ServerInfo(createdAt, ip, port, password, globalIp);
             result.Add(info);
         }
 
@@ -170,12 +218,14 @@ public class ServerInfo
     public string ip;
     public int port;
     public string password;
+    public string globalIp;
 
-    public ServerInfo(string createdAt, string ip, int port, string password)
+    public ServerInfo(string createdAt, string ip, int port, string password, string globalIp = "")
     {
         this.createdAt = createdAt;
         this.ip = ip;
         this.port = port;
         this.password = password;
+        this.globalIp = globalIp;
     }
 }

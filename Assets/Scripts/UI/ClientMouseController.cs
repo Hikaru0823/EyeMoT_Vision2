@@ -6,7 +6,9 @@ public class ClientMouseController : MonoBehaviour
 {
     void Start()
     {
-        //transform.SetParent(InterfaceManager.Instance.viewPanel.mouseContent, false);
+        var parent = transform.parent.GetComponent<RectTransform>();
+        var maxLength = Mathf.Max(parent.rect.width, parent.rect.height);
+        transform.GetComponent<RectTransform>().sizeDelta = new Vector2(maxLength / 20, maxLength / 20);
     }
     public void SetPosition(Vector2 position)
     {

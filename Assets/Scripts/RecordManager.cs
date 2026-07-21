@@ -22,6 +22,7 @@ public class RecordManager : MonoBehaviour
     [Header("Resources")]
     [SerializeField] private Sprite[] _recordIcon; // 0: Record, 1: Stop
     [SerializeField] private Image _recordButtonImage;
+    [SerializeField] private Button _recordButton;
     [SerializeField] private Button _hideHeatmapButton;
     private bool isRecording = false;
 
@@ -42,6 +43,9 @@ public class RecordManager : MonoBehaviour
     public void Init()
     {
         HeatmapRenderer.Instance.StopHeatmap(false);
+        #if !UNITY_WEBGL || UNITY_EDITOR
+        GameRecoder.Instance.RecordEnd();
+        #endif
         _recordButtonImage.sprite = _recordIcon[0];
         OnHideHeatmapButtonPressed();
     }
@@ -70,23 +74,24 @@ public class RecordManager : MonoBehaviour
     public void RecordStart()
     {
         HeatmapRenderer.Instance.ClearHeatmap();
+        _recordButton.interactable = false;
         InterfaceManager.Instance.RecordTimer.StartCountDown(() =>
         {
             #if !UNITY_WEBGL || UNITY_EDITOR
             GameRecoder.Instance.RecordStart();
             #endif
+            _recordButton.interactable = true;
             HeatmapRenderer.Instance.StartHeatmap(isDynamicDraw: true);
             OnHideHeatmapButtonPressed();
         });
 
-        if(ClientManager.Instance == null) return;
-        ClientManager.Instance.SendTcp(
-        NetJson.ToJson(new NetMessage<ChatPayload>
+        ServerManager.Instance.SendTcp(
+        NetJson.ToJson(new NetMessage<StringPayload>
         {
             Type = NetMessageType.RecordStart,
-            SenderId = ClientManager.Instance.Idx,
-            TargetId = 2, // clientへ
-            Payload = new ChatPayload { Text = "" }
+            SenderId = -1,
+            TargetId = -2, // client全員へ
+            Payload = new StringPayload { Text = "" }
         }));
     }
 

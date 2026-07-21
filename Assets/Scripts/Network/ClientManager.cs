@@ -41,8 +41,23 @@ public class ClientManager : MonoBehaviour
         _mainThreadQueue.Enqueue(action);
     }
 
+    public void RemoveAllCallbacks()
+    {
+        TcpConnected = null;
+        TcpDisconnected = null;
+        TcpMessageReceived = null;
+        TcpError = null;
+
+        UdpConnected = null;
+        UdpDisconnected = null;
+        UdpMessageReceived = null;
+        UdpError = null;
+    }
+
     public void AddCallbacks(IClientCallbacks callbacks)
     {
+        RemoveCallbacks(callbacks); // Ensure no duplicate subscriptions
+
         TcpConnected += callbacks.OnTcpConnected;
         TcpDisconnected += callbacks.OnTcpDisconnected;
         TcpMessageReceived += callbacks.OnTcpMessageReceived;

@@ -98,8 +98,8 @@ InitTestScene*.unity*
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
 
-EyeMoTMouse/
-YOUR_RECORD/
+/EyeMoTMouse/
+/YOUR_RECORD/
 Builds/
 diff.txt
 Assets/StreamingAssets/GameRecorder

@@ -31,7 +31,8 @@ namespace EyeMoT.Heatmap
         {
             if(isVisible)
                 _previewImage.texture = heatmapTexture != null ? heatmapTexture : _heatRT;
-            _previewImage.enabled = isVisible;
+            if(_previewImage != null)
+                _previewImage.enabled = isVisible;
         }
 
         [Header("Settings")]
@@ -88,6 +89,10 @@ namespace EyeMoT.Heatmap
 
         public HeatmapResult StopHeatmap(bool writeCsv = true, Action<RenderTexture> onComplete = null)
         {
+            if(_isStart == false)
+            {
+                return null;
+            }
             Debug.Log($"<color=orange>[HeatMap]</color> Stop Recording.");
             _isStart = false;
             var totalDistance = GetTotalGazeDistance();

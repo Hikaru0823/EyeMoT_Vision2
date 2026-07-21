@@ -27,7 +27,7 @@ public class TranparentManager : MonoBehaviour
     public void OnTransparentButtonPressed()
     {
         UniWindowController.current.isTransparent = !UniWindowController.current.isTransparent;
-        PlayerObject.Local.ViewPanel.GetComponent<Image>().color = UniWindowController.current.isTransparent ? new Color(1, 1, 1, 0.0f) : Color.white;
+        PlayerObject.Local.ROIPanel.GetComponent<Image>().color = UniWindowController.current.isTransparent ? new Color(1, 1, 1, 0.0f) : Color.white;
         UpdateTransparentIcon();
     }
 }

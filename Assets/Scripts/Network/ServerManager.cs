@@ -26,6 +26,8 @@ public class ServerManager : MonoBehaviour
     public event Action<Exception> TcpError;
     public event Action<IPEndPoint, string> UdpMessageReceived;
     public event Action<Exception> UdpError;
+    public IServer TcpServer { get { return _tcpServer; } }
+    public IServer UdpServer { get { return _udpServer; } }
 
     private IServer _tcpServer;
     private IServer _udpServer;
@@ -37,13 +39,25 @@ public class ServerManager : MonoBehaviour
         _mainThreadQueue.Enqueue(action);
     }
 
+    public void RemoveAllListeners()
+    {
+        ClientConnected = null;
+        ClientDisconnected = null;
+        TcpMessageReceived = null;
+        TcpError = null;
+        UdpMessageReceived = null;
+        UdpError = null;
+    }
+
     public void AddListener(IServerCallbacks server)
     {
+        RemoveListener(server); // Ensure no duplicate subscriptions
+        
         ClientConnected += server.OnClientConnected;
         ClientDisconnected += server.OnClientDisconnected;
-        TcpMessageReceived += server.OnMessageReceived;
+        TcpMessageReceived += server.OnTcpReceived;
         TcpError += server.OnTcpError;
-        UdpMessageReceived += server.OnMessageReceived;
+        UdpMessageReceived += server.OnUdpReceived;
         UdpError += server.OnUdpError;
     }
 
@@ -51,26 +65,10 @@ public class ServerManager : MonoBehaviour
     {
         ClientConnected -= server.OnClientConnected;
         ClientDisconnected -= server.OnClientDisconnected;
-        TcpMessageReceived -= server.OnMessageReceived;
+        TcpMessageReceived -= server.OnTcpReceived;
         TcpError -= server.OnTcpError;
-        UdpMessageReceived -= server.OnMessageReceived;
+        UdpMessageReceived -= server.OnUdpReceived;
         UdpError -= server.OnUdpError;
-    }
-
-    public void RemoveListener(IServer server)
-    {
-        if (server is TcpServer tcpServer)
-        {
-            tcpServer.ClientConnected -= OnTcpClientConnected;
-            tcpServer.ClientDisconnected -= OnTcpClientDisconnected;
-            server.MessageReceived -= OnTcpMessageReceived;
-            server.Error -= OnTcpError;
-        }
-        else if (server is UdpServer)
-        {
-            server.MessageReceived -= OnUdpMessageReceived;
-            server.Error -= OnUdpError;
-        }
     }
 
     public void InitializeTcp(IServer server)
@@ -175,7 +173,12 @@ public class ServerManager : MonoBehaviour
 
     public async void SendTcp(string message)
     {
-        await SendMessage(_tcpServer,message);
+        await SendMessage(_tcpServer, message);
+    }
+
+    public async void SendUdp(string message)
+    {
+        await SendMessage(_udpServer, message);
     }
 
     public async Task SendMessage(IServer server, string message, IPEndPoint sender = null)
@@ -183,32 +186,16 @@ public class ServerManager : MonoBehaviour
         var header = NetJson.FromJson<NetMessage<object>>(message);
         switch (header.TargetId)
         {
-            case 0:
+            case -1:
+                // サーバー宛のメッセージは無視する
+                break;
+            case -2:
                 List<ClientSession> snapshot;
                 lock (Clients)
                 {
                     snapshot = new List<ClientSession>(Clients.Values);
                 }
                 await server.BroadcastAsync(snapshot, message);
-                break;
-            case -1:
-                if(header.Type == NetMessageType.UdpConnectRequest && sender != null)
-                {
-                    ClientSession udpSession;
-                    lock(Clients)
-                    {
-                        if(Clients.TryGetValue(header.SenderId, out udpSession))
-                        {
-                            udpSession.Udp = sender;
-                        }
-                        else
-                        {
-                            Debug.LogWarning($"[Server] Client {header.SenderId} not found for UDP connect.");
-                            return;
-                        }
-                    }
-                    Debug.Log($"[Server] Client {header.SenderId} UDP connected from {sender}.");
-                }
                 break;
             default:
                 ClientSession session;

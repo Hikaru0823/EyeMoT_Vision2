@@ -29,6 +29,14 @@ public class HostElementUI : MonoBehaviour
 
     public void UpdatePing(int ping)
     {
+        if (ping < 0)
+        {
+            _pingText.text = "--";
+            _pingGage.fillAmount = 0;
+            _pingGage.color = Color.red;
+            return;
+        }
+
         _pingText.text = ping.ToString();
         _pingGage.fillAmount = 1 - Mathf.Clamp01(ping / 300f);
         if(_pingGage.fillAmount > 0.5f)

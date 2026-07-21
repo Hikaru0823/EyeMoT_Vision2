@@ -30,22 +30,36 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
     [SerializeField] private ServerManager _serverManagerPrefab;
     [SerializeField] private int maxClients = 4;
     [SerializeField] private ClientMouseController _clientMousePrefab;
-    [SerializeField] private GameObject _clientViewPanelPrefab;
+    [SerializeField] private GameObject _clientROIPanelPrefab;
     [SerializeField] private CanvasScaler _viewCanvas;
     [SerializeField] private PlayerObject _playerObjectPrefab;
     public event Action ConnectedToServer;
+    public event Action DisconnectedFromServer;
     private Dictionary<int, PlayerObject> _clients = new();
     private ClientManager _clientManager;
     private ServerManager _serverManager;
-
-    private void OnDestroy()
-    {
-        Disconnect();
-    }
+    private List<IServerCallbacks> _serverCallbacks;
+    private List<IClientCallbacks> _clientCallbacks;
 
     private void OnApplicationQuit()
     {
         Disconnect();
+    }
+
+    public void AddServerCallbacks(IServerCallbacks callbacks)
+    {
+        if (!_serverCallbacks.Contains(callbacks))
+        {
+            _serverCallbacks.Add(callbacks);
+        }
+    }
+
+    public void AddClientCallbacks(IClientCallbacks callbacks)
+    {
+        if (!_clientCallbacks.Contains(callbacks))
+        {
+            _clientCallbacks.Add(callbacks);
+        }
     }
 
     public async void StartHost(int port)
@@ -75,8 +89,10 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
         EyeMoTServerConnect.Instance.AddServer(GetLocalIPAddress(), port, "123");
 
         _currentRole = ClientManager.NetworkRole.Host;
+
+        JoinView();
         // 自分もクライアントとして localhost に接続
-        await StartClientsAsync("127.0.0.1", port);
+        //await StartClientsAsync("127.0.0.1", port);
     }
 
     public async void StartClient(string ipAdress, int port)
@@ -93,15 +109,16 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
 
     public void Disconnect()
     {
+        DisconnectedFromServer?.Invoke();
         foreach(var obj in InterfaceManager.Instance.HostUIs)
         {
-            obj.SetActive(true);
+            obj?.SetActive(true);
         }
         Debug.Log("Disconnect / stop host");
         CleanupCurrentRole();
         RecordManager.Instance.Init();
         _currentRole = ClientManager.NetworkRole.None;
-        EyeMoTServerConnect.Instance.DeleteServer();
+        EyeMoTServerConnect.Instance?.DeleteServer();
     }
 
     private async Task StartClientsAsync(string hostIp, int port)
@@ -122,7 +139,17 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
         // とりあえず TCP -> UDP の順で接続
         ResourcesManager.Instance.Loading.SetActive(true);
         await _clientManager.ConnectTcpAsync();
-        //await _clientManager.ConnectUdpAsync();
+    }
+
+    public PlayerObject CreateclientObjects(Vector2 screenSize, int idx, string ip)
+    {
+        var roi = Instantiate(_clientROIPanelPrefab, _viewCanvas.transform);
+        _viewCanvas.referenceResolution = screenSize;
+        roi.GetComponent<RectTransform>().sizeDelta = screenSize;
+        var mouse = CurrentRole == ClientManager.NetworkRole.Host ? Instantiate(_clientMousePrefab, roi.transform) : null;
+        var plObj = Instantiate(_playerObjectPrefab);
+        plObj.Init(idx, ip, roi, mouse);
+        return plObj;
     }
 
     private void CleanupCurrentRole()
@@ -130,32 +157,44 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
         foreach (var controller in _clients)
         {
             Destroy(controller.Value.MouseController.gameObject);
-            Destroy(controller.Value.ViewPanel);
+            Destroy(controller.Value.ROIPanel);
             Destroy(controller.Value.gameObject);
         }
         _clients.Clear();
 
         if(PlayerObject.Local != null)
         {
-            Destroy(PlayerObject.Local.ViewPanel);
+            Destroy(PlayerObject.Local.ROIPanel);
             Destroy(PlayerObject.Local.gameObject);
             PlayerObject.Local = null;
         }
 
         if (_clientManager != null)
         {
-            _clientManager.RemoveCallbacks((IClientCallbacks)this);
+            _clientManager.RemoveAllCallbacks();
             _clientManager.Disconnect();
             Destroy(_clientManager.gameObject);
             _clientManager = null;
         }
         if (_serverManager != null)
         {
-            _serverManager.RemoveListener((IServerCallbacks)this);
+            _serverManager.RemoveAllListeners();
             _serverManager.Stop();
             Destroy(_serverManager.gameObject);
             _serverManager = null;
         }
+    }
+
+    public void JoinView()
+    {
+        ResourcesManager.Instance.Loading.SetActive(false);
+        InterfaceManager.Instance.MainPanelManager.OpenPanel("View");
+        foreach(var obj in InterfaceManager.Instance.HostUIs)
+        {
+            obj.SetActive(CurrentRole == ClientManager.NetworkRole.Host);
+        }
+        EyeMoTMouse.Instance.SetBlurImageActive(CurrentRole != ClientManager.NetworkRole.Host);
+        InterfaceManager.Instance.ViewPanelUI.UpdateServerInfo();
     }
 
     public void ExitGame()
@@ -168,7 +207,7 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
         Disconnect();
     } 
 
-    private string GetLocalIPAddress()
+    public string GetLocalIPAddress()
     {
         try
         {
@@ -190,12 +229,12 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
     {
         Debug.Log($"[Server] Client {client.Id} connected");
         ServerManager.Instance.SendTcp(
-            NetJson.ToJson(new NetMessage<ChatPayload>
+            NetJson.ToJson(new NetMessage<StringPayload>
             {
                 Type = NetMessageType.RegisteredClient,
                 SenderId = 1, // サーバID
                 TargetId = client.Id,
-                Payload = new ChatPayload { Text = $"{client.Id}" }
+                Payload = new StringPayload { Text = $"{client.Id}" }
             })
         );
     }
@@ -206,42 +245,65 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
         if(_clients.TryGetValue(client.Id, out var playerObject))
         {
             Destroy(playerObject.MouseController.gameObject);
-            Destroy(playerObject.ViewPanel);
+            Destroy(playerObject.ROIPanel);
             Destroy(playerObject.gameObject);
             _clients.Remove(client.Id);
         }   
         
     }
 
-    void IServerCallbacks.OnMessageReceived(IPEndPoint ep, string msg)
+    void IServerCallbacks.OnTcpReceived(IPEndPoint ep, string msg)
     {
         //Debug.Log($"[Server] Message received from {ep}: {msg}");
         var header = NetJson.FromJson<NetMessage<object>>(msg);
         switch (header.Type)
         {
             // クライアントの画面サイズとマウスオブジェクト生成
-            case NetMessageType.ScreenSize:
-                var rscrMsg = NetJson.FromJson<NetMessage<ChatPayload>>(msg);
+            case NetMessageType.ClientObjectCreate:
+                var rscrMsg = NetJson.FromJson<NetMessage<StringPayload>>(msg);
                 Debug.Log($"[Client]  Client Screen size is {rscrMsg.Payload.Text}");
-                var screenSizeParts = rscrMsg.Payload.Text.Split('x');
-                if(!_clients.ContainsKey(rscrMsg.SenderId)&&rscrMsg.SenderId!=1)
+                if(!_clients.ContainsKey(rscrMsg.SenderId))
                 {
-                    var vpGo = Instantiate(_clientViewPanelPrefab, _viewCanvas.transform);
-                    _viewCanvas.referenceResolution = new Vector2(
-                    float.Parse(screenSizeParts[0]),
-                    float.Parse(screenSizeParts[1])
-                    );
-                    vpGo.GetComponent<RectTransform>().sizeDelta = _viewCanvas.referenceResolution;
-                    vpGo.GetComponent<RectTransform>().localPosition = new Vector2(-float.Parse(screenSizeParts[0])/2, -float.Parse(screenSizeParts[1])/2);
-                    var go = Instantiate(_clientMousePrefab, vpGo.transform);
-                    go.name = $"ClientMouse_{rscrMsg.SenderId}";
-                    var controller = go.GetComponent<ClientMouseController>();
-                    var plobj = Instantiate(_playerObjectPrefab);
-                    plobj.ViewPanel = vpGo;
-                    plobj.MouseController = controller;
-                    plobj.Id = rscrMsg.SenderId;
+                    var screenSizeParts = rscrMsg.Payload.Text.Split('x');
+                    var screenSize = new Vector2(float.Parse(screenSizeParts[0]), float.Parse(screenSizeParts[1]));
+                    var plobj = CreateclientObjects(screenSize, rscrMsg.SenderId, ep.Address.ToString());
                     _clients.Add(rscrMsg.SenderId, plobj);
                 }
+                break;
+        }
+    }
+
+    void IServerCallbacks.OnUdpReceived(IPEndPoint ep, string msg)
+    {
+        var header = NetJson.FromJson<NetMessage<object>>(msg);
+        switch (header.Type)
+        {
+            case NetMessageType.UdpConnectRequest:
+                ClientSession udpSession;
+                lock(_serverManager.Clients)
+                {
+                    if(_serverManager.Clients.TryGetValue(header.SenderId, out udpSession))
+                    {
+                        udpSession.Udp = ep;
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[Server] Client {header.SenderId} not found for UDP connect.");
+                        return;
+                    }
+                }
+                
+                Debug.Log($"[Server] Client {header.SenderId} UDP connected from {ep}.");
+                break;
+            case NetMessageType.MousePosition:
+                var mousePos = NetJson.FromJson<NetMessage<Vector3Payload>>(msg);
+                if(_clients.TryGetValue(mousePos.SenderId, out var plObj))
+                {
+                    plObj.MouseController.SetPosition(new Vector2(mousePos.Payload.X, mousePos.Payload.Y));
+                }
+                break;
+            default:
+                Debug.Log($"[Server] (Unknown Role) {msg}");
                 break;
         }
     }
@@ -276,7 +338,7 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
         {
             case NetMessageType.RegisteredClient:
                 //インデックス割り当て完了してからUDP接続開始
-                var regiMsg = NetJson.FromJson<NetMessage<ChatPayload>>(msg);
+                var regiMsg = NetJson.FromJson<NetMessage<StringPayload>>(msg);
                 Debug.Log($"[Client]  Your ID is {regiMsg.Payload.Text}");
                 _clientManager.Idx = int.Parse(regiMsg.Payload.Text);
                 await _clientManager.ConnectUdpAsync();
@@ -291,70 +353,52 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
                     })
                 );
 
-                ResourcesManager.Instance.Loading.SetActive(false);
-                InterfaceManager.Instance.MainPanelManager.OpenPanel("View");
-
-                foreach(var obj in InterfaceManager.Instance.HostUIs)
-                {
-                    obj.SetActive(CurrentRole == ClientManager.NetworkRole.Host);
-                }
-                EyeMoTMouse.Instance.SetBlurImageActive(CurrentRole != ClientManager.NetworkRole.Host);
-
-                //if(CurrentRole == ClientManager.NetworkRole.Host) return;
+                JoinView();
                 
                 // ウィンドウサイズを取得
-                var screenSize = $"{Display.main.systemWidth}x{Display.main.systemHeight}";
+                var screenSize = new Vector2(Screen.width, Screen.height); 
                 _clientManager.SendTcp(
-                    NetJson.ToJson(new NetMessage<ChatPayload>
+                    NetJson.ToJson(new NetMessage<StringPayload>
                     {
-                        Type = NetMessageType.ScreenSize,
+                        Type = NetMessageType.ClientObjectCreate,
                         SenderId = _clientManager.Idx,
-                        TargetId = 1, // ホストへ送信
-                        Payload = new ChatPayload { Text = screenSize }
+                        TargetId = -1, // サーバーへ送信
+                        Payload = new StringPayload { Text = $"{screenSize.x}x{screenSize.y}" }
                     })
                 );
+
                 // ローカルプレイヤーオブジェクト生成
-                var vp = Instantiate(_clientViewPanelPrefab, _viewCanvas.transform);
-                _viewCanvas.referenceResolution = new Vector2(Display.main.systemWidth, Display.main.systemHeight);
-                vp.GetComponent<RectTransform>().sizeDelta = _viewCanvas.referenceResolution;
-                var centerpos = new Vector2(-Display.main.systemWidth/2, -Display.main.systemHeight/2);
-                vp.GetComponent<RectTransform>().localPosition = centerpos;
-                ResourcesManager.Instance.AudioListener.transform.SetParent(_viewCanvas.transform);
-                ResourcesManager.Instance.AudioListener.transform.localPosition = Vector3.zero;
-                var localPlayerObject = Instantiate(_playerObjectPrefab);
-                PlayerObject.Local = localPlayerObject;
-                PlayerObject.Local.Id = _clientManager.Idx;
-                PlayerObject.Local.ViewPanel = vp;
+                CreateclientObjects(screenSize, _clientManager.Idx, GetLocalIPAddress());
                 break;
-            case NetMessageType.EffectPosition:
-                var effectMsg = NetJson.FromJson<NetMessage<EffectPositionPayload>>(msg);
+            case NetMessageType.EffectCreate:
+                var effectMsg = NetJson.FromJson<NetMessage<EffectCreatePayload>>(msg);
                 var effectPosition = new Vector3(effectMsg.Payload.X, effectMsg.Payload.Y, effectMsg.Payload.Z);
                 if(VFXManager.Instance.TryGet((VFXDef.TYPE)effectMsg.Payload.VFXTypeIndex, out var vfxData))
                 {
                     Debug.Log($"Create effect {(VFXDef.TYPE)effectMsg.Payload.VFXTypeIndex} at {effectPosition} for client {effectMsg.SenderId}");
-                    InterfaceManager.Instance.ViewPanelController.CreateEffectAt(vfxData.Data.Resource, effectPosition, effectMsg.Payload.CanPlaySE, effectMsg.Payload.CanPlayLowSE, PlayerObject.Local.ViewPanel.GetComponent<RectTransform>());
+                    InterfaceManager.Instance.ViewPanelController.CreateEffectAt(vfxData.Data.Resource, effectPosition, effectMsg.Payload.CanPlaySE, effectMsg.Payload.CanPlayLowSE, PlayerObject.Local.ROIPanel.GetComponent<RectTransform>());
                 }
                 break;
-            case NetMessageType.ImageSpawnPosition:
-                var imageMsg = NetJson.FromJson<NetMessage<ImagePositionPayload>>(msg);
+            case NetMessageType.ImageCreate:
+                var imageMsg = NetJson.FromJson<NetMessage<ImageCreatePayload>>(msg);
                 var imagePosition = new Vector2(imageMsg.Payload.X, imageMsg.Payload.Y);
                 if(ImageManager.Instance.TryGet(imageMsg.Payload.ImageKey, out var imageData))
                 {
                     Debug.Log($"Create image {imageMsg.Payload.ImageKey} at {imagePosition} for client {imageMsg.SenderId}");
-                    InterfaceManager.Instance.ViewPanelController.CreateImageAt(imageData, imageMsg.Payload.ImageGUID, imagePosition, PlayerObject.Local.ViewPanel.GetComponent<RectTransform>());
+                    InterfaceManager.Instance.ViewPanelController.CreateImageAt(imageData, imageMsg.Payload.ImageGUID, imagePosition, PlayerObject.Local.ROIPanel.GetComponent<RectTransform>());
                 }
                 break;
             case NetMessageType.EyeMoTMouseStatus:
-                var statusMsg = NetJson.FromJson<NetMessage<ChatPayload>>(msg);
+                var statusMsg = NetJson.FromJson<NetMessage<StringPayload>>(msg);
                 Debug.Log($"EyeMoTMouse Status from client {statusMsg.SenderId}: {statusMsg.Payload.Text}");
                 bool isTrackable = bool.Parse(statusMsg.Payload.Text);
-                    EyeMoTMouse.Instance.StatusChange(isTrackable);
+                EyeMoTMouse.Instance.StatusChange(isTrackable);
                 break;
             case NetMessageType.RecordStart:
                 InterfaceManager.Instance.RecordTimer.StartCountDown();
                 break;
             case NetMessageType.ImageDestroy:
-                var destroyMsg = NetJson.FromJson<NetMessage<ChatPayload>>(msg);
+                var destroyMsg = NetJson.FromJson<NetMessage<StringPayload>>(msg);
                 Debug.Log($"Destroy image {destroyMsg.Payload.Text} for client {destroyMsg.SenderId}");
                 InterfaceManager.Instance.ViewPanelController.ReceiveDestroyImage(destroyMsg.Payload.Text);
                 break;
@@ -388,15 +432,8 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
         var header = NetJson.FromJson<NetMessage<object>>(msg);
         switch (header.Type)
         {
-            case NetMessageType.MousePosition:
-                var mousePos = NetJson.FromJson<NetMessage<MousePositionPayload>>(msg);
-                if(_clients.TryGetValue(mousePos.SenderId, out var plObj))
-                {
-                    plObj.MouseController.SetPosition(new Vector2(mousePos.Payload.X, mousePos.Payload.Y));
-                }
-                break;
-            case NetMessageType.ImageDynamicPosition:
-                var imagePos = NetJson.FromJson<NetMessage<ImageDynamicPositionPayload>>(msg);
+            case NetMessageType.ImagePosition:
+                var imagePos = NetJson.FromJson<NetMessage<ImagePositionPayload>>(msg);
                 InterfaceManager.Instance.ViewPanelController.ReceiveImageAt(imagePos.Payload.ImageGUID, new Vector2(imagePos.Payload.X, imagePos.Payload.Y));
                 break;
             default:

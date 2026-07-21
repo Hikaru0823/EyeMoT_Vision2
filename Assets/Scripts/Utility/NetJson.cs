@@ -25,18 +25,19 @@ public static class NetJson
     }
 }
 
-public class ChatPayload
+public class StringPayload
 {
     public string Text;
 }
 
-public class MousePositionPayload
+public class Vector3Payload
 {
     public float X;
     public float Y;
+    public float Z;
 }
 
-public class EffectPositionPayload
+public class EffectCreatePayload
 {
     public int VFXTypeIndex;
     public bool CanPlaySE;
@@ -46,7 +47,7 @@ public class EffectPositionPayload
     public float Z;
 }
 
-public class ImagePositionPayload
+public class ImageCreatePayload
 {
     public string ImageKey;
     public string ImageGUID;
@@ -54,7 +55,7 @@ public class ImagePositionPayload
     public float Y;
 }
 
-public class ImageDynamicPositionPayload
+public class ImagePositionPayload
 {
     public string ImageGUID;
     public float X;
@@ -64,25 +65,21 @@ public class ImageDynamicPositionPayload
 public class NetMessage<TPayload>
 {
     public string Type;
-    public int SenderId;     // 送信元 clientId
-    public int TargetId;     // 送信先 clientId （ブロードキャストの場合は0）
+    public int SenderId;     // 送信元 clientId 　-2: Broadcast, -1: Server
+    public int TargetId;     // 送信先 clientId 　-2: Broadcast, -1: Server
     public TPayload Payload;
 }
 
 public class NetMessageType
 {
-    public const string DiscoveryRequest = "DiscoveryRequest";
     public const string UdpConnectRequest = "UdpConnectRequest";
     public const string RegisteredClient = "RegisteredClient";
-    public const string DisconnectedClient = "DisconnectedClient";
-    public const string MouseCreate = "MouseCreate";
+    public const string ClientObjectCreate = "ClientObjectCreate";
     public const string MousePosition = "MousePosition";
-    public const string EffectPosition = "EffectPosition";
-    public const string ImageSpawnPosition = "ImageSpawnPosition";
-    public const string ImageDynamicPosition = "ImageDynamicPosition";
+    public const string EffectCreate = "EffectCreate";
+    public const string ImageCreate = "ImageCreate";
+    public const string ImagePosition = "ImagePosition";
     public const string ImageDestroy = "ImageDestroy";
-    public const string IAmHost = "IAmHost";
-    public const string ScreenSize = "ScreenSize";
     public const string EyeMoTMouseStatus = "EyeMoTMouseStatus";
     public const string RecordStart = "RecordStart";
 }

@@ -57,7 +57,7 @@ public class ViewPanelController : MonoBehaviour
             case ClientManager.NetworkRole.Client:
                 if(PlayerObject.Local == null) return;
                 if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                    PlayerObject.Local.ViewPanel.GetComponent<RectTransform>(), Input.mousePosition, uiCamera, out Vector2 mousePos))
+                    PlayerObject.Local.ROIPanel.GetComponent<RectTransform>(), Input.mousePosition, uiCamera, out Vector2 mousePos))
                 return;
 
                 _timer += Time.deltaTime;
@@ -101,15 +101,15 @@ public class ViewPanelController : MonoBehaviour
 
     void SendImageAt(SendableImage imageOption, Vector2 position, string guid)
     {
-        var msg = new NetMessage<ImagePositionPayload>
+        var msg = new NetMessage<ImageCreatePayload>
         {
-            Type = NetMessageType.ImageSpawnPosition,
-            SenderId = ClientManager.Instance.Idx,
-            TargetId = 2,
-            Payload = new ImagePositionPayload { ImageKey = imageOption.Key, ImageGUID = guid, X = position.x, Y = position.y }
+            Type = NetMessageType.ImageCreate,
+            SenderId = -1,
+            TargetId = -2,
+            Payload = new ImageCreatePayload { ImageKey = imageOption.Key, ImageGUID = guid, X = position.x, Y = position.y }
         };
         string json = NetJson.ToJson(msg);
-        ClientManager.Instance.SendTcp(json);
+        ServerManager.Instance.SendTcp(json);
     }
 
     public void ReceiveImageAt(string imageGUID, Vector2 position)
@@ -133,8 +133,8 @@ public class ViewPanelController : MonoBehaviour
     {
         var image = Instantiate(ImageManager.Instance.spritePrefab, rect.transform);
         image.GetComponent<Image>().sprite = Sprite.Create(data, new Rect(0, 0, data.width, data.height), new Vector2(0.5f, 0.5f));
-        var maxLength = Mathf.Max(rect.sizeDelta.x, rect.sizeDelta.y);
-        image.transform.localScale = (customScale == default) ? maxLength / 500 * Vector3.one : customScale; //300は基準サイズ
+        var maxLength = Mathf.Max(rect.rect.size.x, rect.rect.size.y);
+        image.transform.localScale = (customScale == default) ? maxLength / 500 * Vector3.one : customScale; //500は基準サイズ
         image.transform.localPosition = position;
         var controller = image.GetComponent<ImageController>();
         if(controller == null)
@@ -144,28 +144,26 @@ public class ViewPanelController : MonoBehaviour
         }
         controller.ImageGUID = imageGUID;
         _imageControllers.Add(imageGUID, controller);
-        image.transform.SetAsFirstSibling();
-        //controller.init(3);
         return image;
     }
 
     void SendEffectAt(SendableVFX vFXOption, Vector2 position)
     {
-        var msg = new NetMessage<EffectPositionPayload>
+        var msg = new NetMessage<EffectCreatePayload>
         {
-            Type = NetMessageType.EffectPosition,
-            SenderId = ClientManager.Instance.Idx,
-            TargetId = 2,
-            Payload = new EffectPositionPayload { VFXTypeIndex = (int)vFXOption.Data.Type, CanPlaySE = vFXOption.Property.CanPlaySE, CanPlayLowSE = vFXOption.Property.CanPlayLowSE, X = position.x, Y = position.y, Z = 0 }
+            Type = NetMessageType.EffectCreate,
+            SenderId = -1,
+            TargetId = -2,
+            Payload = new EffectCreatePayload { VFXTypeIndex = (int)vFXOption.Data.Type, CanPlaySE = vFXOption.Property.CanPlaySE, CanPlayLowSE = vFXOption.Property.CanPlayLowSE, X = position.x, Y = position.y, Z = 0 }
         };
         string json = NetJson.ToJson(msg);
-        ClientManager.Instance.SendTcp(json);
+        ServerManager.Instance.SendTcp(json);
     }
 
     public GameObject CreateEffectAt(VFXResource data, Vector2 position, bool canPlaySE, bool canPlayLowSE, RectTransform rect, Vector3 customScale = default)
     {
         var effect = Instantiate(data.Object, rect.transform);
-        var maxLength = Mathf.Max(rect.sizeDelta.x, rect.sizeDelta.y);
+        var maxLength = Mathf.Max(rect.rect.size.x, rect.rect.size.y);
         effect.transform.localScale = (customScale == default) ? maxLength / 30 * Vector3.one : customScale; //30は基準サイズ
         var effectPosition = (Vector3)position + Vector3.back *effect.transform.localScale.x*3; // 少し前に出す
         effect.transform.localPosition = effectPosition;
@@ -175,18 +173,18 @@ public class ViewPanelController : MonoBehaviour
             Debug.LogError("VFXControllerが存在しません");
             return null;
         }
-        controller.init(data, canPlaySE, canPlayLowSE, isSpatial:(customScale == default));
+        controller.init(data, canPlaySE, canPlayLowSE, isSpatial: customScale == default);
         return effect;
     }
 
     void SendMousePosition(Vector2 position)
     {
-        var msg = new NetMessage<MousePositionPayload>
+        var msg = new NetMessage<Vector3Payload>
         {
             Type = NetMessageType.MousePosition,
             SenderId = ClientManager.Instance.Idx,
-            TargetId = 1,
-            Payload = new MousePositionPayload { X = position.x, Y = position.y }
+            TargetId = -1,
+            Payload = new Vector3Payload { X = position.x, Y = position.y }
         };
         string json = NetJson.ToJson(msg);
         ClientManager.Instance.SendUdp(json);
@@ -209,8 +207,7 @@ public class ViewPanelController : MonoBehaviour
             if (rect == null) return false;
 
             // Screen → World（RectTransformの平面上）
-            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                    rect, _pointer.position, uiCamera, out Vector2 localPivotOrigin))
+            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(rect, _pointer.position, uiCamera, out Vector2 localPivotOrigin))
                 return false;
 
             _pos = localPivotOrigin;
