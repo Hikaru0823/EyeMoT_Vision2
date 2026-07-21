@@ -1,5 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Net.Sockets;
+using System.Threading.Tasks;
 using Michsky.UI.Shift;
 using UnityEngine;
 using UnityEngine.UI;
@@ -12,6 +14,7 @@ public class HostDiscoveryUI : MonoBehaviour
     [SerializeField] private GameObject _noHostsFoundText;
     [SerializeField] private float pingInterval = 5f;
     [SerializeField] private float pingTimeout = 3f;
+    [SerializeField] private int tcpConnectTimeoutMs = 1500;
     private List<HostElementUI> _hostElements = new List<HostElementUI>();
     private readonly List<Coroutine> _pingCoroutines = new List<Coroutine>();
 
@@ -47,24 +50,24 @@ public class HostDiscoveryUI : MonoBehaviour
         NetworkBootStrap.Instance.StartClient(ipAddress, port);
     }
 
-    void OnReceived(List<ServerInfo> serverList)
+    async void OnReceived(List<ServerInfo> serverList)
     {
-        EyeMoTServerConnect.Instance.GetGlobalIPAddress(globalIp => OnGlobalIPAddressReceived(globalIp, serverList));
+        await ShowReachableHostsAsync(serverList);
     }
 
-    void OnGlobalIPAddressReceived(string globalIp, List<ServerInfo> serverList)
+    async Task ShowReachableHostsAsync(List<ServerInfo> serverList)
     {
-        if (string.IsNullOrEmpty(globalIp))
-        {
-            Debug.LogError("Global IP address could not be fetched.");
-            FinishDiscovery();
-            return;
-        }
-
+        var reachableHosts = new List<ServerInfo>();
         foreach (var host in serverList)
         {
-            //if(globalIp != host.globalIp) continue;
-            
+            if (await CanConnectTcpAsync(host.ip, host.port))
+            {
+                reachableHosts.Add(host);
+            }
+        }
+
+        foreach (var host in reachableHosts)
+        {
             var element = Instantiate(_hostElementPrefab, _hostsListParent);
             element.SetServerInfo(host, ClickAction);
             _hostElements.Add(element);
@@ -72,6 +75,34 @@ public class HostDiscoveryUI : MonoBehaviour
         }
 
         FinishDiscovery();
+    }
+
+    async Task<bool> CanConnectTcpAsync(string ipAddress, int port)
+    {
+        using (var client = new TcpClient())
+        {
+            try
+            {
+                var connectTask = client.ConnectAsync(ipAddress, port);
+                var timeoutTask = Task.Delay(tcpConnectTimeoutMs);
+                var completedTask = await Task.WhenAny(connectTask, timeoutTask);
+
+                if (completedTask != connectTask)
+                {
+                    Debug.Log($"TCP connect test timeout: {ipAddress}:{port}");
+                    return false;
+                }
+
+                await connectTask;
+                Debug.Log($"TCP connect test succeeded: {ipAddress}:{port}");
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.Log($"TCP connect test failed: {ipAddress}:{port} / {ex.Message}");
+                return false;
+            }
+        }
     }
 
     void FinishDiscovery()
