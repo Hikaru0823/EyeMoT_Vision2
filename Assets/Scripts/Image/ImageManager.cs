@@ -6,7 +6,12 @@ using UnityEngine;
 
 public class ImageManager : MonoBehaviour
 {
+    public enum AnimationType
+    {
+        Drag,
+    }
     public static ImageManager Instance { get; private set; }
+    [SerializeField] private ImageAnimationHolder _imageAnimationHolderd;
     [Header("exeと同じ階層の読み込み元フォルダ名")]
     [SerializeField] private string sourceFolderName = "YOUR_RESOURCES";
 
@@ -29,6 +34,8 @@ public class ImageManager : MonoBehaviour
             return;
         }
         Instance = this;
+
+        InitImageAnimations();
 
         var exeDir = GetExeDir();
         var sourceDir = Path.Combine(exeDir, sourceFolderName);
@@ -131,6 +138,29 @@ public class ImageManager : MonoBehaviour
             if (item.Texture != null) Destroy(item.Texture);
         }
         _imageList.Clear();
+    }
+
+    [SerializeField, ReadOnly] private ImageAnimationData[] _imageAnimationList;
+    [SerializeField, ReadOnly] ImageAnimationDef.TYPE _currentAnimationType = ImageAnimationDef.TYPE.Normal;
+
+    public void SetCurrentAnimationType(ImageAnimationDef.TYPE type)
+    {
+        _currentAnimationType = type;
+    }
+
+    public ImageAnimationDef.TYPE GetCurrentAnimationType()
+    {
+        return _currentAnimationType;
+    }
+
+    private void InitImageAnimations()
+    {
+        _imageAnimationHolderd.init();
+    }
+
+    public bool TryGetAnimation(ImageAnimationDef.TYPE type, out ImageAnimationData result)
+    {
+        return _imageAnimationHolderd.TryGet(type, out result);
     }
 }
 

@@ -7,6 +7,7 @@ public static class SaveKey
 
     public const string VFX_SELECTED = "VFX_SELECTED";
     public const string IMAGE_SELECTED = "IMAGE_SELECTED";
+    public const string ANIMATION_SELECTED = "ANIMATION_SELECTED";
 
     //Switch
     public const string SWITCH_STATE = "SWITCH_STATE";

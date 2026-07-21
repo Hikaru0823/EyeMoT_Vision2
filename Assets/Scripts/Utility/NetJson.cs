@@ -50,6 +50,7 @@ public class EffectCreatePayload
 public class ImageCreatePayload
 {
     public string ImageKey;
+    public int AnimationTypeIndex;
     public string ImageGUID;
     public float X;
     public float Y;
@@ -79,6 +80,7 @@ public class NetMessageType
     public const string EffectCreate = "EffectCreate";
     public const string ImageCreate = "ImageCreate";
     public const string ImagePosition = "ImagePosition";
+    public const string ImageActive = "ImageActive";
     public const string ImageDestroy = "ImageDestroy";
     public const string EyeMoTMouseStatus = "EyeMoTMouseStatus";
     public const string RecordStart = "RecordStart";

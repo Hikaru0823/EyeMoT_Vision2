@@ -89,13 +89,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0278762f964a95549a476067ee96fa14, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _PopStartScale: 0.8
-  _PopOvershootScale: 1.08
-  _PopInDuration: 0.12
-  _PopOutDuration: 0.08
-  _DisappearEndScale: 0.7
-  _DisappearDuration: 0.12
+  _MoveSendThreshold: 0.01
   _destroyButton: {fileID: 6169414700574144908}
+  _image: {fileID: 3349211847282772715}
 --- !u!1 &6169414700574144908
 GameObject:
   m_ObjectHideFlags: 0

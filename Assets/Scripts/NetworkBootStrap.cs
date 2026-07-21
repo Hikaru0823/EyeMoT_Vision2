@@ -162,6 +162,8 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
         }
         _clients.Clear();
 
+        InterfaceManager.Instance.ViewPanelController.ClearAllImages();
+
         if(PlayerObject.Local != null)
         {
             Destroy(PlayerObject.Local.ROIPanel);
@@ -384,8 +386,8 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
                 var imagePosition = new Vector2(imageMsg.Payload.X, imageMsg.Payload.Y);
                 if(ImageManager.Instance.TryGet(imageMsg.Payload.ImageKey, out var imageData))
                 {
-                    Debug.Log($"Create image {imageMsg.Payload.ImageKey} at {imagePosition} for client {imageMsg.SenderId}");
-                    InterfaceManager.Instance.ViewPanelController.CreateImageAt(imageData, imageMsg.Payload.ImageGUID, imagePosition, PlayerObject.Local.ROIPanel.GetComponent<RectTransform>());
+                    Debug.Log($"Create image {imageMsg.Payload.ImageKey} with animation {(ImageAnimationDef.TYPE)imageMsg.Payload.AnimationTypeIndex} at {imagePosition} for client {imageMsg.SenderId}");
+                    InterfaceManager.Instance.ViewPanelController.CreateImageAt(imageData, imageMsg.Payload.ImageGUID, (ImageAnimationDef.TYPE)imageMsg.Payload.AnimationTypeIndex, imagePosition, PlayerObject.Local.ROIPanel.GetComponent<RectTransform>());
                 }
                 break;
             case NetMessageType.EyeMoTMouseStatus:
@@ -401,6 +403,10 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
                 var destroyMsg = NetJson.FromJson<NetMessage<StringPayload>>(msg);
                 Debug.Log($"Destroy image {destroyMsg.Payload.Text} for client {destroyMsg.SenderId}");
                 InterfaceManager.Instance.ViewPanelController.ReceiveDestroyImage(destroyMsg.Payload.Text);
+                break;
+            case NetMessageType.ImageActive:
+                var activeMsg = NetJson.FromJson<NetMessage<ImagePositionPayload>>(msg);
+                InterfaceManager.Instance.ViewPanelController.ReceiveImageActive(activeMsg.Payload.ImageGUID);
                 break;
             default:
                 Debug.Log("[Client Reliable] (Unknown Role) " + msg);

@@ -84,7 +84,8 @@ public class ViewPanelController : MonoBehaviour
             return CreateEffectAt(vfxOption.Data.Resource, position, vfxOption.Property.CanPlaySE, vfxOption.Property.CanPlayLowSE, rect);
         else if(sendableObj is SendableImage imageOption)
         {   
-            return CreateImageAt(imageOption.Texture, guid, position, rect);
+            var animationType = ImageManager.Instance.GetCurrentAnimationType();
+            return CreateImageAt(imageOption.Texture, guid, animationType, position, rect);
         }
         return null;
     }
@@ -95,18 +96,19 @@ public class ViewPanelController : MonoBehaviour
             SendEffectAt(vfxOption, position);
         else if (sendableObj is SendableImage imageOption)
         {
-            SendImageAt(imageOption, position, guid);
+            var animationType = ImageManager.Instance.GetCurrentAnimationType();
+            SendImageAt(imageOption, animationType, position, guid);
         }
     }
 
-    void SendImageAt(SendableImage imageOption, Vector2 position, string guid)
+    void SendImageAt(SendableImage imageOption, ImageAnimationDef.TYPE animationType, Vector2 position, string guid)
     {
         var msg = new NetMessage<ImageCreatePayload>
         {
             Type = NetMessageType.ImageCreate,
             SenderId = -1,
             TargetId = -2,
-            Payload = new ImageCreatePayload { ImageKey = imageOption.Key, ImageGUID = guid, X = position.x, Y = position.y }
+            Payload = new ImageCreatePayload { ImageKey = imageOption.Key, ImageGUID = guid, X = position.x, Y = position.y, AnimationTypeIndex = (int)animationType }
         };
         string json = NetJson.ToJson(msg);
         ServerManager.Instance.SendTcp(json);
@@ -129,12 +131,21 @@ public class ViewPanelController : MonoBehaviour
         }
     }
 
-    public GameObject CreateImageAt(Texture2D data, string imageGUID, Vector2 position, RectTransform rect, Vector3 customScale = default)
+    public void ReceiveImageActive(string imageGUID)
+    {
+        if(_imageControllers.TryGetValue(imageGUID, out var controller))
+        {
+            controller.Active();
+        }
+    }
+
+    public GameObject CreateImageAt(Texture2D data, string imageGUID, ImageAnimationDef.TYPE animationType, Vector2 position, RectTransform rect, Vector3 customScale = default)
     {
         var image = Instantiate(ImageManager.Instance.spritePrefab, rect.transform);
         image.GetComponent<Image>().sprite = Sprite.Create(data, new Rect(0, 0, data.width, data.height), new Vector2(0.5f, 0.5f));
         var maxLength = Mathf.Max(rect.rect.size.x, rect.rect.size.y);
-        image.transform.localScale = (customScale == default) ? maxLength / 500 * Vector3.one : customScale; //500は基準サイズ
+        var scale = (customScale == default) ? maxLength / 500 * Vector3.one : customScale; //500は基準サイズ
+        image.transform.localScale = scale;
         image.transform.localPosition = position;
         var controller = image.GetComponent<ImageController>();
         if(controller == null)
@@ -142,6 +153,7 @@ public class ViewPanelController : MonoBehaviour
             Debug.LogError("ImageControllerが存在しません");
             return null;
         }
+        controller.Init(animationType, scale);
         controller.ImageGUID = imageGUID;
         _imageControllers.Add(imageGUID, controller);
         return image;
@@ -190,7 +202,7 @@ public class ViewPanelController : MonoBehaviour
         ClientManager.Instance.SendUdp(json);
     }
 
-    bool TryGetViewPanelAtPointer(out Vector2 _pos, out RectTransform _rect)
+    public bool TryGetViewPanelAtPointer(out Vector2 _pos, out RectTransform _rect)
     {
         _pos = Vector2.zero;
         _rect = null;
@@ -330,6 +342,15 @@ public class ViewPanelController : MonoBehaviour
             screenPosition,
             eventCamera,
             out localPoint);
+    }
+
+    public void ClearAllImages()
+    {
+        foreach (var controller in _imageControllers.Values)
+        {
+            Destroy(controller.gameObject);
+        }
+        _imageControllers.Clear();
     }
 
     bool IsPointerOverBlockedUI()
