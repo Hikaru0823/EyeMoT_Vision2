@@ -37,7 +37,7 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
     public event Action DisconnectedFromServer;
     private Dictionary<int, PlayerObject> _clients = new();
     private ClientManager _clientManager;
-    private ServerManager _serverManager;
+    public ServerManager ServerManager;
     private List<IServerCallbacks> _serverCallbacks;
     private List<IClientCallbacks> _clientCallbacks;
 
@@ -69,21 +69,21 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
         CleanupCurrentRole();
 
         // --- サーバ起動（TCP + UDP） ---
-        if(_serverManager != null)
+        if(ServerManager != null)
         {
-            Destroy(_serverManager.gameObject);
-            _serverManager = null;
+            Destroy(ServerManager.gameObject);
+            ServerManager = null;
         }
         
-        _serverManager = Instantiate(_serverManagerPrefab);
+        ServerManager = Instantiate(_serverManagerPrefab);
         
         var _tcpServer = new TcpServer(port);
-        var _usdServer = new UdpServer(port + 1, ResourcesManager.Instance.ServerData.DictionaryPort_UDP);
-        _serverManager.AddListener((IServerCallbacks)this);
-        _serverManager.InitializeTcp(_tcpServer);
-        _serverManager.InitializeUdp(_usdServer);
-        _serverManager.StartTcp();
-        _serverManager.StartUdp();
+        var _usdServer = new UdpServer(port + 1);
+        ServerManager.AddListener((IServerCallbacks)this);
+        ServerManager.InitializeTcp(_tcpServer);
+        ServerManager.InitializeUdp(_usdServer);
+        ServerManager.StartTcp();
+        ServerManager.StartUdp();
 
         Debug.Log($"Servers started: TCP:{port}, UDP:{port + 1}");
         EyeMoTServerConnect.Instance.AddServer(GetLocalIPAddress(), port, "123");
@@ -178,12 +178,12 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
             Destroy(_clientManager.gameObject);
             _clientManager = null;
         }
-        if (_serverManager != null)
+        if (ServerManager != null)
         {
-            _serverManager.RemoveAllListeners();
-            _serverManager.Stop();
-            Destroy(_serverManager.gameObject);
-            _serverManager = null;
+            ServerManager.RemoveAllListeners();
+            ServerManager.Stop();
+            Destroy(ServerManager.gameObject);
+            ServerManager = null;
         }
     }
 
@@ -230,7 +230,7 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
     void IServerCallbacks.OnClientConnected(TcpServer.ClientConnection client)
     {
         Debug.Log($"[Server] Client {client.Id} connected");
-        ServerManager.Instance.SendTcp(
+        ServerManager.SendTcp(
             NetJson.ToJson(new NetMessage<StringPayload>
             {
                 Type = NetMessageType.RegisteredClient,
@@ -282,9 +282,9 @@ public class NetworkBootStrap : MonoBehaviour, IClientCallbacks, IServerCallback
         {
             case NetMessageType.UdpConnectRequest:
                 ClientSession udpSession;
-                lock(_serverManager.Clients)
+                lock(ServerManager.Clients)
                 {
-                    if(_serverManager.Clients.TryGetValue(header.SenderId, out udpSession))
+                    if(ServerManager.Clients.TryGetValue(header.SenderId, out udpSession))
                     {
                         udpSession.Udp = ep;
                     }

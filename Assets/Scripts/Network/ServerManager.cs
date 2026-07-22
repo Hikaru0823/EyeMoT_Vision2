@@ -8,16 +8,6 @@ using System.Threading.Tasks;
 using UnityEngine;
 public class ServerManager : MonoBehaviour
 {
-    public static ServerManager Instance;
-    void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(this.gameObject);
-            return;
-        }
-        Instance = this;
-    }
     public Dictionary<int, ClientSession> Clients = new Dictionary<int, ClientSession>();
 
     public event Action<TcpServer.ClientConnection> ClientConnected;
@@ -131,7 +121,6 @@ public class ServerManager : MonoBehaviour
 
     public void Stop()
     {
-        Instance = null;
         _tcpServer?.Stop();
         _udpServer?.Stop();
     }

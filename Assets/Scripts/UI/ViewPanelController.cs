@@ -111,7 +111,7 @@ public class ViewPanelController : MonoBehaviour
             Payload = new ImageCreatePayload { ImageKey = imageOption.Key, ImageGUID = guid, X = position.x, Y = position.y, AnimationTypeIndex = (int)animationType }
         };
         string json = NetJson.ToJson(msg);
-        ServerManager.Instance.SendTcp(json);
+        NetworkBootStrap.Instance.ServerManager.SendTcp(json);
     }
 
     public void ReceiveImageAt(string imageGUID, Vector2 position)
@@ -169,7 +169,7 @@ public class ViewPanelController : MonoBehaviour
             Payload = new EffectCreatePayload { VFXTypeIndex = (int)vFXOption.Data.Type, CanPlaySE = vFXOption.Property.CanPlaySE, CanPlayLowSE = vFXOption.Property.CanPlayLowSE, X = position.x, Y = position.y, Z = 0 }
         };
         string json = NetJson.ToJson(msg);
-        ServerManager.Instance.SendTcp(json);
+        NetworkBootStrap.Instance.ServerManager.SendTcp(json);
     }
 
     public GameObject CreateEffectAt(VFXResource data, Vector2 position, bool canPlaySE, bool canPlayLowSE, RectTransform rect, Vector3 customScale = default)

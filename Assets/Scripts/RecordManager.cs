@@ -85,7 +85,7 @@ public class RecordManager : MonoBehaviour
             OnHideHeatmapButtonPressed();
         });
 
-        ServerManager.Instance.SendTcp(
+        NetworkBootStrap.Instance.ServerManager.SendTcp(
         NetJson.ToJson(new NetMessage<StringPayload>
         {
             Type = NetMessageType.RecordStart,

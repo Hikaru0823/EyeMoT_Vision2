@@ -14,6 +14,6 @@ public class ViewPanelUI : MonoBehaviour
         roleText.text = $"Role: {NetworkBootStrap.Instance.CurrentRole}";
         serverInfoText.text = ClientManager.Instance != null ?
             $"Connected to: {ClientManager.Instance.TCPHost}:{ClientManager.Instance.TCPPort}" :
-            $"Connected to: {NetworkBootStrap.Instance.GetLocalIPAddress()}:{ServerManager.Instance.TcpServer.Port}";
+            $"Connected to: {NetworkBootStrap.Instance.GetLocalIPAddress()}:{NetworkBootStrap.Instance.ServerManager.TcpServer.Port}";
     }
 }

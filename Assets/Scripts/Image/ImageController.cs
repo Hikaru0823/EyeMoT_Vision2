@@ -65,7 +65,7 @@ public class ImageController : MonoBehaviour
             transform.localScale = _initialScale;
             if(InterfaceManager.Instance.ViewPanelController.TryGetViewPanelAtPointer(out Vector2 pos, out RectTransform rect))
             {
-                ServerManager.Instance.SendTcp(
+                NetworkBootStrap.Instance.ServerManager.SendTcp(
                     NetJson.ToJson(new NetMessage<ImagePositionPayload>
                     {
                         Type = NetMessageType.ImageActive,
@@ -146,7 +146,7 @@ public class ImageController : MonoBehaviour
             Payload = new ImagePositionPayload { ImageGUID = ImageGUID, X = position.x, Y = position.y }
         };
         string json = NetJson.ToJson(msg);
-        ServerManager.Instance.SendUdp(json);
+        NetworkBootStrap.Instance.ServerManager.SendUdp(json);
     }
 
     public void ReceiveImageAt(Vector2 position)
@@ -164,7 +164,7 @@ public class ImageController : MonoBehaviour
             Payload = new StringPayload { Text = ImageGUID }
         };
         string json = NetJson.ToJson(msg);
-        ServerManager.Instance.SendTcp(json);
+        NetworkBootStrap.Instance.ServerManager.SendTcp(json);
         Destroy(gameObject);
     }
 
