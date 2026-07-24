@@ -139,14 +139,12 @@ public class UdpServer : IServer
                     break;
                 }
 
-                // 値を表すデータを持たないOSC型。
                 case 'T': result.Append("true"); break;
                 case 'F': result.Append("false"); break;
                 case 'N': result.Append("null"); break;
                 case 'I': result.Append("Infinity"); break;
 
                 default:
-                    // 未対応型は読み取り位置を決定できないため通常のUTF-8処理へ戻す。
                     return false;
             }
         }
